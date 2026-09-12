@@ -22,7 +22,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-RUN addgroup --system --gid 1001 nodejs \
+RUN apk add --no-cache su-exec \
+  && addgroup --system --gid 1001 nodejs \
   && adduser --system --uid 1001 nextjs \
   && mkdir -p /app/data/media \
   && chown -R nextjs:nodejs /app
@@ -32,14 +33,23 @@ COPY --from=builder --chown=nextjs:nodejs /app/drizzle ./drizzle
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/migrate.mjs ./scripts/migrate.mjs
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-# Native addon + ORM for entrypoint migrations (often dropped by tracing)
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/better-sqlite3 ./node_modules/better-sqlite3
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/bindings ./node_modules/bindings
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/file-uri-to-path ./node_modules/file-uri-to-path
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/drizzle-orm ./node_modules/drizzle-orm
+
+# Resolve pnpm symlinks so the native .node binary is a real directory copy
+COPY --from=builder /app/node_modules /tmp/nm
+RUN set -eu; \
+  copy_pkg() { \
+    src="$(readlink -f "/tmp/nm/$1")"; \
+    mkdir -p "/app/node_modules/$1"; \
+    cp -a "$src"/. "/app/node_modules/$1/"; \
+  }; \
+  copy_pkg better-sqlite3; \
+  copy_pkg drizzle-orm; \
+  chown -R nextjs:nodejs /app/node_modules; \
+  rm -rf /tmp/nm
+
 COPY --chown=nextjs:nodejs entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 
-USER nextjs
+# Entrypoint starts as root to chown the volume, then drops to nextjs
 EXPOSE 3000
 ENTRYPOINT ["./entrypoint.sh"]

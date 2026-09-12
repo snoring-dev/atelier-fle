@@ -4,7 +4,15 @@ services:
     ports:
       - "3000:3000"
     env_file:
-      - .env
+      - path: .env
+        required: false
+      - path: .env.local
+        required: false
+    environment:
+      DATABASE_PROVIDER: sqlite
+      DATABASE_URL: file:/app/data/fle.db
+      GOTENBERG_URL: http://pdf:3000
+      PUBLIC_INTERNAL_URL: http://web:3000
     volumes:
       - fle-data:/app/data
     depends_on:
