@@ -44,6 +44,17 @@ RUN set -eu; \
   }; \
   copy_pkg better-sqlite3; \
   copy_pkg drizzle-orm; \
+  copy_pkg @node-rs/argon2; \
+  # Platform bindings may be nested under pnpm's @node-rs/argon2 node_modules
+  argon_nm="$(readlink -f /tmp/nm/@node-rs/argon2)/../"; \
+  for pkg in argon2-linux-x64-musl argon2-linux-arm64-musl; do \
+    if [ -d "$argon_nm/$pkg" ]; then \
+      mkdir -p "/app/node_modules/@node-rs/$pkg"; \
+      cp -a "$argon_nm/$pkg"/. "/app/node_modules/@node-rs/$pkg/"; \
+    elif [ -e "/tmp/nm/@node-rs/$pkg" ] || [ -L "/tmp/nm/@node-rs/$pkg" ]; then \
+      copy_pkg "@node-rs/$pkg"; \
+    fi; \
+  done; \
   chown -R nextjs:nodejs /app/node_modules; \
   rm -rf /tmp/nm
 

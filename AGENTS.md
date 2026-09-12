@@ -19,3 +19,7 @@ Format:
 - Subject: imperative, ~50–72 chars, focuses on *why* / outcome (e.g. `Scaffold Atelier FLE with Next.js, Biome, shadcn, and SQLite DB port`).
 - Optional body: 1–2 short sentences with context (story ID, what is intentionally out of scope).
 - Prefer referencing the user story when relevant (`US-1.0`, `US-2.2`, …).
+
+## When a ticket is finished
+
+When we finish working on a story/ticket, we should always rename the original ticket by adding "[DONE]_" to the title. This helps us identify what user stories has been implemented.

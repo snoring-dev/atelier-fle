@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Oswald, Poppins } from "next/font/google";
-import { Header } from "@/components/header";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
@@ -35,8 +34,7 @@ export default function RootLayout({
     >
       <body className="flex min-h-full flex-col font-sans">
         <TooltipProvider>
-          <Header />
-          <main className="flex-1">{children}</main>
+          {children}
           <Toaster />
         </TooltipProvider>
       </body>
