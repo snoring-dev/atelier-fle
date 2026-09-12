@@ -25,11 +25,18 @@
     format("woff2-variations");
 }
 
+.document {
+  margin: 0;
+  padding: 0;
+}
+
 .page {
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
   width: 210mm;
   min-height: 297mm;
-  margin: 0;
+  margin: 0 0 12mm;
   padding: 20mm 18mm 20mm 22mm;
   background: #fff;
   color: #000;
@@ -37,6 +44,14 @@
   font-size: 12pt;
   line-height: 17pt;
   font-weight: 400;
+}
+
+.page:last-child {
+  margin-bottom: 0;
+}
+
+.pageBody {
+  flex: 1 1 auto;
 }
 
 .column {
@@ -53,24 +68,40 @@
   color: #000;
 }
 
+.illustration {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0 0 12pt;
+  aspect-ratio: 3 / 2;
+  object-fit: cover;
+  border: 0.5pt solid rgb(0 0 0 / 40%);
+}
+
 .text {
   margin: 0 0 14pt;
   white-space: pre-wrap;
 }
 
 .section {
-  margin: 0 0 14pt;
+  margin: 0 0 8pt;
 }
 
 .sectionTitle {
-  margin: 0 0 8pt;
-  padding: 0 0 3pt;
+  margin: 0 0 4pt;
+  padding: 0 0 2pt;
   border-bottom: 0.5pt solid rgb(0 0 0 / 40%);
   font-family: "Source Sans 3", "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-size: 11pt;
   font-weight: 600;
   line-height: 14pt;
   color: #000;
+}
+
+/* Exercises + corrigé use the full printable width so prompts wrap less. */
+.page[data-page="2"] .column,
+.page[data-page="3"] .column {
+  width: 100%;
 }
 
 .vocabBox {
@@ -80,6 +111,8 @@
   border: 0.5pt solid rgb(0 0 0 / 40%);
   background: #f2f2f0;
   list-style: none;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .vocabItem {
@@ -101,33 +134,217 @@
 
 .questions {
   margin: 0;
-  padding: 0 0 0 18pt;
+  padding: 0 0 0 16pt;
 }
 
-.question {
-  margin: 0 0 10pt;
+.questionBlock {
+  margin: 0 0 3pt;
+  padding: 0;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.questionPrompt {
+  margin: 0;
+  padding: 0;
+  line-height: 14pt;
+}
+
+.writingLines {
+  margin: 0;
   padding: 0;
 }
 
+.writingLine {
+  box-sizing: border-box;
+  height: 9mm;
+  border-bottom: 0.5pt solid rgb(0 0 0 / 40%);
+}
+
 .ordering {
-  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3pt 10pt;
+  margin: 0 0 4pt;
   padding: 0;
   list-style: none;
 }
 
 .orderingItem {
-  margin: 0 0 6pt;
+  display: flex;
+  gap: 6pt;
+  align-items: flex-start;
+  margin: 0 0 3pt;
   padding: 0;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.orderingBox {
+  box-sizing: border-box;
+  flex: 0 0 8mm;
+  width: 8mm;
+  height: 8mm;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0.5pt solid rgb(0 0 0 / 40%);
+  font-family: "Source Sans 3", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 10pt;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.orderingText {
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 14pt;
+  font-size: 11pt;
 }
 
 .label {
   font-weight: 600;
 }
 
+.sequenceLabel {
+  margin: 0 0 2pt;
+  font-family: "Source Sans 3", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 10pt;
+  font-weight: 600;
+}
+
+.sequenceBand {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.sequenceCellGroup {
+  display: inline-flex;
+  align-items: center;
+}
+
+.sequenceBox {
+  box-sizing: border-box;
+  display: inline-block;
+  width: 8mm;
+  height: 8mm;
+  border: 0.5pt solid rgb(0 0 0 / 40%);
+  background: #fff;
+}
+
+.sequenceArrow {
+  display: inline-block;
+  margin: 0 2pt;
+  font-size: 9pt;
+  line-height: 8mm;
+  color: rgb(0 0 0 / 60%);
+}
+
+.detachHeader {
+  margin: 0 0 12pt;
+}
+
+.detachTitle {
+  margin: 0 0 6pt;
+  font-family: "Source Sans 3", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 14pt;
+  font-weight: 600;
+  line-height: 18pt;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.cutRule {
+  height: 0;
+  border: none;
+  border-top: 0.5pt dashed rgb(0 0 0 / 40%);
+}
+
+.answerList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.answerItem {
+  margin: 0 0 8pt;
+  padding: 0;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.answerPrompt {
+  margin: 0 0 2pt;
+  font-weight: 600;
+}
+
+.answerNumber {
+  font-weight: 600;
+}
+
+.answerText {
+  margin: 0;
+  padding: 0 0 0 14pt;
+}
+
+.hints {
+  margin: 0;
+  padding: 0 0 0 28pt;
+}
+
+.hints li {
+  margin: 0 0 2pt;
+}
+
+.orderedSequence {
+  margin: 0 0 10pt;
+  padding: 0 0 0 18pt;
+}
+
+.orderedItem {
+  margin: 0 0 4pt;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.rationaleTitle {
+  margin: 0 0 4pt;
+  font-family: "Source Sans 3", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 11pt;
+  font-weight: 600;
+  line-height: 14pt;
+}
+
+.rationale {
+  margin: 0;
+}
+
+.footer {
+  flex: 0 0 auto;
+  margin-top: auto;
+  padding-top: 4pt;
+  font-family: "Source Sans 3", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 9pt;
+  line-height: 11pt;
+  color: rgb(0 0 0 / 40%);
+}
+
 @media print {
   .page {
     width: auto;
-    min-height: 0;
+    min-height: 257mm;
+    margin: 0;
     padding: 0;
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .page:last-child {
+    break-after: auto;
+    page-break-after: auto;
   }
 }

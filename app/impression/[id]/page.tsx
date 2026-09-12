@@ -9,6 +9,14 @@ type ImpressionPageProps = {
   searchParams: Promise<{ t?: string }>;
 };
 
+function formatDateLabel(date: Date): string {
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(date);
+}
+
 export default async function ImpressionPage({
   params,
   searchParams,
@@ -35,5 +43,12 @@ export default async function ImpressionPage({
     notFound();
   }
 
-  return <WorksheetDocument payload={payload} />;
+  return (
+    <WorksheetDocument
+      payload={payload}
+      numero={fiche.numero}
+      theme={fiche.theme}
+      dateLabel={formatDateLabel(fiche.createdAt)}
+    />
+  );
 }
