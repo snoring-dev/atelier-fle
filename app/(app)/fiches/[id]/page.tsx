@@ -1,19 +1,22 @@
 import { notFound } from "next/navigation";
-import { Heading } from "@/components/heading";
-import { Text } from "@/components/text";
-import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { FicheStream } from "@/components/fiche-stream";
 import { getDatabase } from "@/lib/db";
+import { type FichePayload, ficheSchema } from "@/lib/schemas";
 
 type FichePageProps = {
   params: Promise<{ id: string }>;
 };
+
+function parsePayload(raw: string | null): FichePayload | null {
+  if (!raw) return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    const result = ficheSchema.safeParse(parsed);
+    return result.success ? result.data : null;
+  } catch {
+    return null;
+  }
+}
 
 export default async function FichePage({ params }: FichePageProps) {
   const { id } = await params;
@@ -27,26 +30,15 @@ export default async function FichePage({ params }: FichePageProps) {
     notFound();
   }
 
-  return (
-    <div className="mx-auto max-w-6xl px-4 py-10">
-      <div className="mb-6 flex flex-wrap items-center gap-3">
-        <Heading level={1}>Fiche n°{fiche.numero}</Heading>
-        <Badge variant={fiche.status === "validee" ? "default" : "secondary"}>
-          {fiche.status === "validee" ? "Validée" : "Brouillon"}
-        </Badge>
-      </div>
+  const initialPayload = parsePayload(fiche.payload);
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{fiche.theme ?? "Sans thème"}</CardTitle>
-          <CardDescription>{fiche.category ?? "Thème libre"}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Text className="text-muted-foreground">
-            La génération du contenu arrivera à l&apos;étape suivante.
-          </Text>
-        </CardContent>
-      </Card>
-    </div>
+  return (
+    <FicheStream
+      numero={fiche.numero}
+      theme={fiche.theme}
+      category={fiche.category}
+      status={fiche.status}
+      initialPayload={initialPayload}
+    />
   );
 }

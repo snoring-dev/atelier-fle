@@ -5,11 +5,18 @@ export type CreateFicheInput = {
   category: string | null;
 };
 
+export type SaveDraftInput = {
+  numero: number;
+  payload: string;
+  promptVersion: string;
+};
+
 /** Repository surfaces — methods arrive with later stories. */
 export type FichesRepository = {
   create(input: CreateFicheInput): Promise<Fiche>;
   getByNumero(numero: number): Promise<Fiche | null>;
   listRecent(limit: number): Promise<Fiche[]>;
+  saveDraft(input: SaveDraftInput): Promise<Fiche>;
 };
 
 export type LexiqueRepository = {

@@ -1,2 +1,5 @@
-/** Pedagogical prompts land in US-2.2. */
-export {};
+export { PROMPT_VERSION, SYSTEM_PROMPT } from "./system";
+export {
+  type BuildFicheUserPromptInput,
+  buildFicheUserPrompt,
+} from "./user";

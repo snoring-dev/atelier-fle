@@ -1,2 +1,9 @@
-/** Zod schemas (ficheSchema, …) land in US-2.2. */
-export {};
+export {
+  type FichePayload,
+  ficheSchema,
+  orderingSentenceSchema,
+  type QuestionType,
+  questionSchema,
+  questionTypeSchema,
+  vocabItemSchema,
+} from "./fiche";

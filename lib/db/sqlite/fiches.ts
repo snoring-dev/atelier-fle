@@ -60,5 +60,23 @@ export function createFichesRepository(db: Db): FichesRepository {
         .all();
       return rows.map(mapRow);
     },
+
+    async saveDraft({ numero, payload, promptVersion }) {
+      const updated = db
+        .update(schema.fiches)
+        .set({
+          payload,
+          promptVersion,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.fiches.numero, numero))
+        .returning()
+        .get();
+
+      if (!updated) {
+        throw new Error(`Fiche ${numero} introuvable`);
+      }
+      return mapRow(updated);
+    },
   };
 }
