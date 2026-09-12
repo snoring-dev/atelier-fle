@@ -1,9 +1,15 @@
 import type { Fiche, ImageRow, LexiqueEntry } from "./types";
 
+export type CreateFicheInput = {
+  theme: string;
+  category: string | null;
+};
+
 /** Repository surfaces — methods arrive with later stories. */
 export type FichesRepository = {
-  // US-2.x+: create, getByNumero, updatePayload, list, …
-  readonly _entity: Fiche;
+  create(input: CreateFicheInput): Promise<Fiche>;
+  getByNumero(numero: number): Promise<Fiche | null>;
+  listRecent(limit: number): Promise<Fiche[]>;
 };
 
 export type LexiqueRepository = {
