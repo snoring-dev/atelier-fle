@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { after } from "next/server";
 import { ficheStreamResponse, streamFiche } from "@/lib/ai";
 import { SESSION_COOKIE_NAME, verifySessionToken } from "@/lib/auth/session";
 import { getDatabase } from "@/lib/db";
@@ -43,6 +44,10 @@ export async function POST(req: Request) {
     return new Response("Fiche introuvable", { status: 404 });
   }
 
+  if (fiche.status === "validee") {
+    return new Response("Fiche déjà validée", { status: 409 });
+  }
+
   if (!fiche.theme) {
     return new Response("Thème manquant sur la fiche", { status: 400 });
   }
@@ -53,19 +58,24 @@ export async function POST(req: Request) {
     reviewWords: [],
   });
 
-  // Persist the completed object once the stream finishes (US-2.2).
-  // Partials are not saved here (US-2.3).
-  void Promise.resolve(result.output)
-    .then(async (object) => {
+  // Keep the model stream draining if the client aborts (tab close / Stop).
+  // Do not forward req.signal — that would cancel persist on disconnect.
+  void result.consumeStream();
+
+  // Persist the completed object after the response finishes (US-2.3).
+  // Partials are not saved — only a schema-valid object from result.output.
+  after(async () => {
+    try {
+      const object = await result.output;
       await db.fiches.saveDraft({
         numero,
         payload: JSON.stringify(object),
         promptVersion: PROMPT_VERSION,
       });
-    })
-    .catch((err: unknown) => {
+    } catch (err: unknown) {
       console.error("Failed to save fiche draft after generation:", err);
-    });
+    }
+  });
 
   return ficheStreamResponse(result);
 }
