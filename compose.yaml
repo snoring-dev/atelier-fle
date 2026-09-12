@@ -1,0 +1,22 @@
+services:
+  web:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    volumes:
+      - fle-data:/app/data
+    depends_on:
+      - pdf
+
+  pdf:
+    image: gotenberg/gotenberg:8
+    command:
+      - gotenberg
+      - --chromium-allow-list=^http://web:3000/.*
+    ports:
+      - "3001:3000"
+
+volumes:
+  fle-data:
