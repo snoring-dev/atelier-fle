@@ -7,3 +7,4 @@ export {
   questionTypeSchema,
   vocabItemSchema,
 } from "./fiche";
+export { parsePayload } from "./payload";

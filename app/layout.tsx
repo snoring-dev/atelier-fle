@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 import { Oswald, Poppins } from "next/font/google";
-import { Toaster } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 
 const oswald = Oswald({
@@ -32,12 +30,7 @@ export default function RootLayout({
       lang="fr"
       className={`${oswald.variable} ${poppins.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col font-sans">
-        <TooltipProvider>
-          {children}
-          <Toaster />
-        </TooltipProvider>
-      </body>
+      <body className="min-h-full">{children}</body>
     </html>
   );
 }

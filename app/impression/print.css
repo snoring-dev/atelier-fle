@@ -1,0 +1,27 @@
+@page {
+  size: A4 portrait;
+  margin: 20mm 18mm 20mm 22mm;
+}
+
+html:has(.impression-root),
+html:has(.impression-root) body {
+  margin: 0;
+  padding: 0;
+  background: #fff;
+  color: #000;
+}
+
+.impression-root {
+  margin: 0;
+  padding: 0;
+  background: #fff;
+  color: #000;
+}
+
+@media print {
+  html:has(.impression-root),
+  html:has(.impression-root) body,
+  .impression-root {
+    background: #fff;
+  }
+}

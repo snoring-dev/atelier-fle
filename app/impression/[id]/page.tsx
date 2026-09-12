@@ -1,5 +1,8 @@
 import { notFound } from "next/navigation";
+import { WorksheetDocument } from "@/components/print/worksheet-document";
 import { verifyPrintToken } from "@/lib/auth/print-token";
+import { getDatabase } from "@/lib/db";
+import { parsePayload } from "@/lib/schemas";
 
 type ImpressionPageProps = {
   params: Promise<{ id: string }>;
@@ -22,10 +25,15 @@ export default async function ImpressionPage({
     notFound();
   }
 
-  // Placeholder until US-3.1 renders the A4 worksheet.
-  return (
-    <main className="p-8">
-      <p>Impression {ficheId}</p>
-    </main>
-  );
+  const fiche = await getDatabase().fiches.getByNumero(ficheId);
+  if (!fiche) {
+    notFound();
+  }
+
+  const payload = parsePayload(fiche.payload);
+  if (!payload) {
+    notFound();
+  }
+
+  return <WorksheetDocument payload={payload} />;
 }
