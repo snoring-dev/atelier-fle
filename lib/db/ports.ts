@@ -17,6 +17,8 @@ export type FichesRepository = {
   getByNumero(numero: number): Promise<Fiche | null>;
   listRecent(limit: number): Promise<Fiche[]>;
   saveDraft(input: SaveDraftInput): Promise<Fiche>;
+  /** Mark brouillon as validee; no-op if already validated. */
+  validate(numero: number): Promise<Fiche>;
 };
 
 export type LexiqueRepository = {

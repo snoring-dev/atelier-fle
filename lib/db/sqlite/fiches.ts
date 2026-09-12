@@ -78,5 +78,38 @@ export function createFichesRepository(db: Db): FichesRepository {
       }
       return mapRow(updated);
     },
+
+    async validate(numero) {
+      const existing = db
+        .select()
+        .from(schema.fiches)
+        .where(eq(schema.fiches.numero, numero))
+        .get();
+
+      if (!existing) {
+        throw new Error(`Fiche ${numero} introuvable`);
+      }
+
+      if (existing.status === "validee") {
+        return mapRow(existing);
+      }
+
+      const now = new Date();
+      const updated = db
+        .update(schema.fiches)
+        .set({
+          status: "validee",
+          validatedAt: now,
+          updatedAt: now,
+        })
+        .where(eq(schema.fiches.numero, numero))
+        .returning()
+        .get();
+
+      if (!updated) {
+        throw new Error(`Fiche ${numero} introuvable`);
+      }
+      return mapRow(updated);
+    },
   };
 }

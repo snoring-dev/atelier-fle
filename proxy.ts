@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { verifyPrintToken } from "@/lib/auth/print-token";
+import { consumePrintToken } from "@/lib/auth/print-token";
 import { SESSION_COOKIE_NAME, verifySessionToken } from "@/lib/auth/session";
 
 export async function proxy(request: NextRequest) {
@@ -21,7 +21,7 @@ export async function proxy(request: NextRequest) {
     if (
       printToken &&
       Number.isFinite(ficheId) &&
-      (await verifyPrintToken(printToken, ficheId))
+      (await consumePrintToken(printToken, ficheId))
     ) {
       return NextResponse.next();
     }

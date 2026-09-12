@@ -1,11 +1,12 @@
 "use client";
 
 import { useObject } from "@ai-sdk/react";
-import { useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { Heading } from "@/components/heading";
 import { Text } from "@/components/text";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -16,6 +17,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import type { FichePayload } from "@/lib/schemas";
 import { ficheSchema } from "@/lib/schemas";
+import { cn } from "@/lib/utils";
 
 type FicheStreamProps = {
   numero: number;
@@ -39,8 +41,11 @@ export function FicheStream({
   status,
   initialPayload,
 }: FicheStreamProps) {
+  const router = useRouter();
   const started = useRef(false);
   const hasInitial = initialPayload !== null;
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const { object, submit, isLoading, error, stop } = useObject({
     api: "/api/fiches/generate",
@@ -56,6 +61,36 @@ export function FicheStream({
 
   const display = object;
   const showSkeleton = isLoading && !display?.text && !display?.title;
+  const hasExportableContent = Boolean(display?.title && display?.text);
+  const canExport = !isLoading && hasExportableContent && !exporting;
+
+  async function handleExport() {
+    setExportError(null);
+    setExporting(true);
+    try {
+      const res = await fetch(`/api/fiches/${numero}/pdf`);
+      if (!res.ok) {
+        const message = await res.text().catch(() => "");
+        throw new Error(message || `Export impossible (${res.status})`);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `fiche-${numero}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      router.refresh();
+    } catch (err: unknown) {
+      setExportError(
+        err instanceof Error ? err.message : "Export PDF impossible",
+      );
+    } finally {
+      setExporting(false);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
@@ -101,6 +136,32 @@ export function FicheStream({
         <p className="mb-4 text-sm text-destructive" role="alert">
           La génération a échoué. {error.message}
         </p>
+      ) : null}
+
+      {exportError ? (
+        <p className="mb-4 text-sm text-destructive" role="alert">
+          {exportError}
+        </p>
+      ) : null}
+
+      {hasExportableContent ? (
+        <div className="mb-6 flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            disabled={!canExport}
+            onClick={() => void handleExport()}
+          >
+            {exporting ? "Export en cours…" : "Valider et exporter"}
+          </Button>
+          <a
+            className={cn(buttonVariants({ variant: "outline" }))}
+            href={`/api/fiches/${numero}/impression`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Imprimer depuis le navigateur
+          </a>
+        </div>
       ) : null}
 
       {showSkeleton ? (

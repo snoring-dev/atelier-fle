@@ -1,18 +1,10 @@
-import { cookies } from "next/headers";
 import { after } from "next/server";
 import { ficheStreamResponse, streamFiche } from "@/lib/ai";
-import { SESSION_COOKIE_NAME, verifySessionToken } from "@/lib/auth/session";
+import { requireSession } from "@/lib/auth/require-session";
 import { getDatabase } from "@/lib/db";
 import { PROMPT_VERSION } from "@/lib/prompts";
 
 export const maxDuration = 30;
-
-async function requireSession(): Promise<boolean> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
-  if (!token) return false;
-  return verifySessionToken(token);
-}
 
 export async function POST(req: Request) {
   if (!(await requireSession())) {
