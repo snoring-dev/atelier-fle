@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Text } from "@/components/text";
 
 const navItems = [
   { href: "/", label: "Séance" },
@@ -10,7 +11,10 @@ export function Header() {
   return (
     <header className="border-b border-border bg-background">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
-        <Link href="/" className="text-sm font-semibold text-primary">
+        <Link
+          href="/"
+          className="font-heading text-base font-semibold text-primary"
+        >
           Atelier FLE
         </Link>
         <nav
@@ -23,7 +27,7 @@ export function Header() {
               href={item.href}
               className="text-sm text-foreground/80 transition-colors hover:text-foreground"
             >
-              {item.label}
+              <Text as="span">{item.label}</Text>
             </Link>
           ))}
         </nav>
