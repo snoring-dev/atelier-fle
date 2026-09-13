@@ -1,13 +1,14 @@
 "use client";
 
 import { useObject } from "@ai-sdk/react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { FicheEditor } from "@/components/fiche-editor";
+import { SectionRegenBridge } from "@/components/section-regen-bridge";
 import { Text } from "@/components/text";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { FichePayload } from "@/lib/schemas";
+import type { FichePayload, FicheSection } from "@/lib/schemas";
 import { ficheSchema } from "@/lib/schemas";
 
 type FicheStreamProps = {
@@ -19,6 +20,12 @@ type FicheStreamProps = {
   promptVersion: string | null;
   /** Parsed payload if already generated; null triggers auto-start. */
   initialPayload: FichePayload | null;
+};
+
+type SectionJob = {
+  id: number;
+  section: FicheSection;
+  basePayload: FichePayload;
 };
 
 function parseInitial(
@@ -41,6 +48,12 @@ export function FicheStream({
   const [stablePayload, setStablePayload] = useState<FichePayload | null>(
     initialPayload,
   );
+  const [sectionJob, setSectionJob] = useState<SectionJob | null>(null);
+  const [sectionMerged, setSectionMerged] = useState<FichePayload | null>(null);
+  const [sectionLoading, setSectionLoading] = useState(false);
+  const [sectionError, setSectionError] = useState<string | null>(null);
+  const sectionStopRef = useRef<(() => void) | null>(null);
+  const jobIdRef = useRef(0);
 
   const { object, submit, isLoading, error, stop } = useObject({
     api: "/api/fiches/generate",
@@ -54,32 +67,109 @@ export function FicheStream({
     submit({ numero });
   }, [hasInitial, numero, submit]);
 
-  // Only promote complete, schema-valid objects into the editor.
+  // Promote full-generate stream into the editor. Once a stable payload exists,
+  // ignore the stale full-generate `object` (section regen must not be overwritten).
   useEffect(() => {
+    if (sectionJob) return;
+    if (stablePayload !== null && !isLoading) return;
     const result = ficheSchema.safeParse(object);
     if (result.success) {
       setStablePayload(result.data);
     }
-  }, [object]);
+  }, [object, sectionJob, isLoading, stablePayload]);
 
-  const showSkeleton = isLoading && !stablePayload;
+  const handleSectionMerged = useCallback((payload: FichePayload) => {
+    setSectionMerged(payload);
+  }, []);
 
-  function handleRegenerate() {
-    started.current = true;
-    submit({ numero });
+  const handleSectionComplete = useCallback((payload: FichePayload) => {
+    const result = ficheSchema.safeParse(payload);
+    if (result.success) {
+      setStablePayload(result.data);
+    }
+    setSectionJob(null);
+    setSectionMerged(null);
+    setSectionLoading(false);
+  }, []);
+
+  const handleSectionLoading = useCallback((loading: boolean) => {
+    setSectionLoading(loading);
+  }, []);
+
+  const handleSectionError = useCallback((message: string | null) => {
+    setSectionError(message);
+    if (message) {
+      setSectionJob(null);
+      setSectionMerged(null);
+      setSectionLoading(false);
+    }
+  }, []);
+
+  const handleStopReady = useCallback((fn: (() => void) | null) => {
+    sectionStopRef.current = fn;
+  }, []);
+
+  function handleRegenerateSection(
+    section: FicheSection,
+    currentPayload: FichePayload,
+  ) {
+    jobIdRef.current += 1;
+    setSectionError(null);
+    setSectionMerged(currentPayload);
+    setSectionLoading(true);
+    setSectionJob({
+      id: jobIdRef.current,
+      section,
+      basePayload: currentPayload,
+    });
   }
 
-  if (stablePayload) {
+  const generating = isLoading || sectionLoading || sectionJob !== null;
+  const displayPayload = sectionMerged ?? stablePayload;
+  const showSkeleton = isLoading && !stablePayload;
+  const activeError = sectionError ?? (error ? error.message : null);
+
+  if (displayPayload) {
     return (
-      <FicheEditor
-        numero={numero}
-        status={status}
-        dateLabel={dateLabel}
-        promptVersion={promptVersion}
-        initialPayload={stablePayload}
-        isGenerating={isLoading}
-        onRegenerate={handleRegenerate}
-      />
+      <>
+        {sectionJob ? (
+          <SectionRegenBridge
+            key={sectionJob.id}
+            numero={numero}
+            section={sectionJob.section}
+            basePayload={sectionJob.basePayload}
+            onMerged={handleSectionMerged}
+            onComplete={handleSectionComplete}
+            onLoadingChange={handleSectionLoading}
+            onError={handleSectionError}
+            onStopReady={handleStopReady}
+          />
+        ) : null}
+        <FicheEditor
+          numero={numero}
+          status={status}
+          dateLabel={dateLabel}
+          promptVersion={promptVersion}
+          initialPayload={displayPayload}
+          isGenerating={generating}
+          streamError={activeError}
+          onStop={
+            generating
+              ? () => {
+                  if (sectionJob) {
+                    sectionStopRef.current?.();
+                    setSectionJob(null);
+                    setSectionMerged(null);
+                    setSectionLoading(false);
+                  } else {
+                    stop();
+                  }
+                }
+              : undefined
+          }
+          onRegenerateSection={handleRegenerateSection}
+        />
+      </>
     );
   }
 

@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import type { FichePayload } from "@/lib/schemas";
+import type { FichePayload, FicheSection } from "@/lib/schemas";
 import { cn } from "@/lib/utils";
 
 const POSITIONS = [1, 2, 3, 4, 5, 6] as const;
@@ -27,7 +27,12 @@ type FicheEditorProps = {
   promptVersion: string | null;
   initialPayload: FichePayload;
   isGenerating: boolean;
-  onRegenerate: () => void;
+  streamError?: string | null;
+  onStop?: () => void;
+  onRegenerateSection: (
+    section: FicheSection,
+    currentPayload: FichePayload,
+  ) => void;
 };
 
 function duplicatePositions(payload: FichePayload): Set<number> {
@@ -49,20 +54,23 @@ export function FicheEditor({
   promptVersion,
   initialPayload,
   isGenerating,
-  onRegenerate,
+  streamError,
+  onStop,
+  onRegenerateSection,
 }: FicheEditorProps) {
   const router = useRouter();
   const [payload, setPayload] = useState<FichePayload>(initialPayload);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const skipNextSave = useRef(true);
+  /** Only hand edits may autosave — never stream/sync snapshots. */
+  const dirtyRef = useRef(false);
   const promptVersionRef = useRef(promptVersion);
 
   // Sync when a regenerate finishes with a new valid payload.
   useEffect(() => {
     setPayload(initialPayload);
-    skipNextSave.current = true;
+    dirtyRef.current = false;
   }, [initialPayload]);
 
   useEffect(() => {
@@ -76,10 +84,7 @@ export function FicheEditor({
 
   useEffect(() => {
     if (isGenerating || status === "validee") return;
-    if (skipNextSave.current) {
-      skipNextSave.current = false;
-      return;
-    }
+    if (!dirtyRef.current) return;
 
     const timer = window.setTimeout(() => {
       void (async () => {
@@ -92,6 +97,7 @@ export function FicheEditor({
           setSaveError(result.error);
         } else {
           setSaveError(null);
+          dirtyRef.current = false;
         }
       })();
     }, SAVE_IDLE_MS);
@@ -128,6 +134,7 @@ export function FicheEditor({
   }
 
   function patch(updater: (prev: FichePayload) => FichePayload) {
+    dirtyRef.current = true;
     setPayload((prev) => updater(prev));
   }
 
@@ -145,9 +152,25 @@ export function FicheEditor({
         <Button
           type="button"
           disabled={isGenerating || status === "validee"}
-          onClick={onRegenerate}
+          onClick={() => onRegenerateSection("text", payload)}
         >
           Régénérer le texte
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={isGenerating || status === "validee"}
+          onClick={() => onRegenerateSection("questions", payload)}
+        >
+          Régénérer les questions
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={isGenerating || status === "validee"}
+          onClick={() => onRegenerateSection("ordering", payload)}
+        >
+          Régénérer l&apos;ordre
         </Button>
         <Button type="button" disabled>
           Générer l&apos;illustration
@@ -167,8 +190,18 @@ export function FicheEditor({
         >
           Imprimer depuis le navigateur
         </a>
+        {isGenerating && onStop ? (
+          <Button type="button" variant="ghost" size="sm" onClick={onStop}>
+            Arrêter
+          </Button>
+        ) : null}
       </div>
 
+      {streamError ? (
+        <p className="text-[14px] text-destructive" role="alert">
+          La régénération a échoué. {streamError}
+        </p>
+      ) : null}
       {exportError ? (
         <p className="text-[14px] text-destructive" role="alert">
           {exportError}

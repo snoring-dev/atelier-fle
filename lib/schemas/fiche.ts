@@ -94,5 +94,23 @@ export const ficheSchema = z.object({
   }),
 });
 
+export const ficheSectionSchema = z.enum(["text", "questions", "ordering"]);
+
+export const textSectionSchema = ficheSchema.pick({ text: true });
+export const questionsSectionSchema = ficheSchema.pick({ questions: true });
+export const orderingSectionSchema = ficheSchema.pick({ ordering: true });
+
 export type FichePayload = z.infer<typeof ficheSchema>;
+export type FicheSection = z.infer<typeof ficheSectionSchema>;
 export type QuestionType = z.infer<typeof questionTypeSchema>;
+
+export function sectionSchemaFor(section: FicheSection) {
+  switch (section) {
+    case "text":
+      return textSectionSchema;
+    case "questions":
+      return questionsSectionSchema;
+    case "ordering":
+      return orderingSectionSchema;
+  }
+}
