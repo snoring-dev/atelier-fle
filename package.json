@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "biome check .",
     "format": "biome check --write .",
+    "test": "tsx --test lib/checks/**/*.test.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
     "auth:hash": "tsx scripts/hash-password.ts"

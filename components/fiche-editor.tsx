@@ -1,9 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { saveFicheDraft } from "@/app/(app)/actions";
-import { WorksheetPreview } from "@/components/print/worksheet-preview";
+import { CheckBanner } from "@/components/check-banner";
+import {
+  type OverflowPage,
+  WorksheetPreview,
+} from "@/components/print/worksheet-preview";
 import {
   Accordion,
   AccordionContent,
@@ -14,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { evaluateFicheChecks } from "@/lib/checks";
 import type { FichePayload, FicheSection } from "@/lib/schemas";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +36,8 @@ type FicheEditorProps = {
   initialPayload: FichePayload;
   isGenerating: boolean;
   streamError?: string | null;
+  /** Review words from lexicon draw (US-7.1). Empty → grey Révision pill. */
+  reviewWords?: readonly string[];
   onStop?: () => void;
   onRegenerateSection: (
     section: FicheSection,
@@ -74,18 +81,26 @@ export function FicheEditor({
   initialPayload,
   isGenerating,
   streamError,
+  reviewWords = [],
   onStop,
   onRegenerateSection,
 }: FicheEditorProps) {
   const router = useRouter();
   const [payload, setPayload] = useState<FichePayload>(initialPayload);
-  const [editedFields, setEditedFields] = useState<Set<string>>(() => new Set());
+  const [editedFields, setEditedFields] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [overflowPage, setOverflowPage] = useState<OverflowPage | null>(null);
   /** Only hand edits may autosave — never stream/sync snapshots. */
   const dirtyRef = useRef(false);
   const promptVersionRef = useRef(promptVersion);
+
+  const handleOverflowChange = useCallback((page: OverflowPage | null) => {
+    setOverflowPage(page);
+  }, []);
 
   // Sync when a regenerate finishes with a new valid payload.
   useEffect(() => {
@@ -98,7 +113,17 @@ export function FicheEditor({
   }, [promptVersion]);
 
   const dupes = useMemo(() => duplicatePositions(payload), [payload]);
+  const checks = useMemo(
+    () =>
+      evaluateFicheChecks({
+        payload,
+        reviewWords,
+        overflowPage,
+      }),
+    [payload, reviewWords, overflowPage],
+  );
   const fieldsDisabled = isGenerating || status === "validee";
+  // Warnings never block export (US-5.1).
   const canExport =
     !isGenerating && !exporting && Boolean(payload.title && payload.text);
 
@@ -153,10 +178,7 @@ export function FicheEditor({
     }
   }
 
-  function patch(
-    updater: (prev: FichePayload) => FichePayload,
-    path?: string,
-  ) {
+  function patch(updater: (prev: FichePayload) => FichePayload, path?: string) {
     dirtyRef.current = true;
     if (path && !PREVIEW_SKIP.has(path)) {
       setEditedFields((prev) => {
@@ -572,13 +594,15 @@ export function FicheEditor({
           </Accordion>
         </div>
 
-        <div className="min-w-0">
+        <div className="flex min-w-0 flex-col gap-3">
+          <CheckBanner checks={checks} />
           <WorksheetPreview
             payload={payload}
             numero={numero}
             theme={payload.theme}
             dateLabel={dateLabel}
             editedFields={editedFields}
+            onOverflowChange={handleOverflowChange}
           />
         </div>
       </div>
