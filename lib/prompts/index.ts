@@ -1,3 +1,7 @@
+export {
+  buildOrderingAuditUserPrompt,
+  ORDERING_AUDIT_SYSTEM_PROMPT,
+} from "./audit";
 export { PROMPT_VERSION, SYSTEM_PROMPT } from "./system";
 export {
   type BuildFicheSectionUserPromptInput,

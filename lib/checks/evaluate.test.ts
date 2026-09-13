@@ -81,7 +81,10 @@ describe("hasLogicalMarker", () => {
 
 describe("evaluateFicheChecks", () => {
   it("returns all ok for a valid payload with no overflow and empty review", () => {
-    const results = evaluateFicheChecks({ payload: basePayload() });
+    const results = evaluateFicheChecks({
+      payload: basePayload(),
+      orderingAmbiguous: false,
+    });
     const byId = Object.fromEntries(results.map((r) => [r.id, r]));
     assert.equal(byId.textLength.status, "ok");
     assert.equal(byId.questionTypes.status, "ok");
@@ -90,6 +93,8 @@ describe("evaluateFicheChecks", () => {
     assert.equal(byId.reviewWords.status, "neutral");
     assert.equal(byId.vocabulary.status, "ok");
     assert.equal(byId.overflow.status, "ok");
+    assert.equal(byId.orderingAmbiguity.status, "ok");
+    assert.equal(byId.orderingAmbiguity.label, "Ordre");
   });
 
   it("warns when word count is out of range", () => {
@@ -177,5 +182,24 @@ describe("evaluateFicheChecks", () => {
     }).find((c) => c.id === "overflow");
     assert.equal(r?.status, "warn");
     assert.equal(r?.detail, "Débordement : un bloc dépasse la page 2");
+  });
+
+  it("keeps Ordre neutral when audit has not run", () => {
+    const r = evaluateFicheChecks({ payload: basePayload() }).find(
+      (c) => c.id === "orderingAmbiguity",
+    );
+    assert.equal(r?.status, "neutral");
+    assert.equal(r?.label, "Ordre");
+  });
+
+  it("warns with ordre ambigu when audit disagrees", () => {
+    const r = evaluateFicheChecks({
+      payload: basePayload(),
+      orderingAmbiguous: true,
+      orderingAuditActual: ["e", "a", "c", "b", "d", "f"],
+    }).find((c) => c.id === "orderingAmbiguity");
+    assert.equal(r?.status, "warn");
+    assert.equal(r?.label, "ordre ambigu");
+    assert.equal(r?.detail, "L'audit propose un autre ordre : e-a-c-b-d-f");
   });
 });

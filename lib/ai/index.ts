@@ -1,14 +1,24 @@
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { createTextStreamResponse, Output, streamText, toTextStream } from "ai";
+import {
+  createTextStreamResponse,
+  generateText,
+  Output,
+  streamText,
+  toTextStream,
+} from "ai";
+import type { AuditSentence } from "@/lib/checks/audit";
 import {
   buildFicheSectionUserPrompt,
   buildFicheUserPrompt,
+  buildOrderingAuditUserPrompt,
+  ORDERING_AUDIT_SYSTEM_PROMPT,
   SYSTEM_PROMPT,
 } from "@/lib/prompts";
 import {
   type FichePayload,
   type FicheSection,
   ficheSchema,
+  orderingAuditResultSchema,
   orderingSectionSchema,
   questionsSectionSchema,
   textSectionSchema,
@@ -16,6 +26,7 @@ import {
 import { getModelId, getOpenRouterApiKey } from "./env";
 
 const TEMPERATURE = 0.8;
+const AUDIT_TEMPERATURE = 0;
 
 export type StreamFicheInput = {
   theme: string;
@@ -118,4 +129,34 @@ export function ficheStreamResponse(result: StreamResult): Response {
   return createTextStreamResponse({
     stream: toTextStream({ stream: result.stream }),
   });
+}
+
+/**
+ * Blind reorder of shuffled ordering sentences (US-5.2).
+ * Temperature 0; never receives positions or rationale.
+ */
+export async function auditOrderingSentences(
+  sentences: readonly AuditSentence[],
+): Promise<{ labels: string[] }> {
+  const openrouter = createOpenRouter({
+    apiKey: getOpenRouterApiKey(),
+  });
+
+  const result = await generateText({
+    model: openrouter(getModelId()),
+    temperature: AUDIT_TEMPERATURE,
+    system: ORDERING_AUDIT_SYSTEM_PROMPT,
+    prompt: buildOrderingAuditUserPrompt(sentences),
+    output: Output.object({
+      schema: orderingAuditResultSchema,
+      name: "OrderingAudit",
+      description: "Ordre unique des six phrases (étiquettes a–f)",
+    }),
+  });
+
+  if (!result.output) {
+    throw new Error("Audit ordering: empty model output");
+  }
+
+  return result.output;
 }

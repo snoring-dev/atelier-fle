@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 
 const POSITIONS = [1, 2, 3, 4, 5, 6] as const;
 const SAVE_IDLE_MS = 800;
+const AUDIT_IDLE_MS = 800;
 
 /** Paths with no counterpart in the worksheet preview. */
 const PREVIEW_SKIP = new Set(["category", "illustration.description"]);
@@ -45,6 +46,11 @@ type FicheEditorProps = {
   ) => void;
 };
 
+type OrderingAuditState = {
+  ambiguous: boolean | null;
+  actual: string[] | null;
+};
+
 function duplicatePositions(payload: FichePayload): Set<number> {
   const counts = new Map<number, number>();
   for (const s of payload.ordering.sentences) {
@@ -55,6 +61,13 @@ function duplicatePositions(payload: FichePayload): Set<number> {
     if (count > 1) dupes.add(pos);
   }
   return dupes;
+}
+
+/** Fingerprint of ordering fields that affect the ambiguity audit. */
+function orderingFingerprint(payload: FichePayload): string {
+  return payload.ordering.sentences
+    .map((s) => `${s.label}\0${s.text}\0${s.position}`)
+    .join("\n");
 }
 
 function clearSectionMarks(
@@ -94,6 +107,10 @@ export function FicheEditor({
   const [exportError, setExportError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [overflowPage, setOverflowPage] = useState<OverflowPage | null>(null);
+  const [orderingAudit, setOrderingAudit] = useState<OrderingAuditState>({
+    ambiguous: null,
+    actual: null,
+  });
   /** Only hand edits may autosave — never stream/sync snapshots. */
   const dirtyRef = useRef(false);
   const promptVersionRef = useRef(promptVersion);
@@ -112,6 +129,57 @@ export function FicheEditor({
     promptVersionRef.current = promptVersion;
   }, [promptVersion]);
 
+  const orderingKey = useMemo(() => orderingFingerprint(payload), [payload]);
+  const payloadRef = useRef(payload);
+  payloadRef.current = payload;
+
+  // Blind ordering audit (US-5.2): debounce when labels/texts/positions change.
+  useEffect(() => {
+    // orderingKey is the intentional trigger (fingerprint of label/text/position).
+    if (!orderingKey || isGenerating) return;
+    const current = payloadRef.current;
+    if (current.ordering.sentences.length !== 6) return;
+
+    setOrderingAudit({ ambiguous: null, actual: null });
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const res = await fetch(`/api/fiches/${numero}/audit`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ payload: payloadRef.current }),
+            signal: controller.signal,
+          });
+          if (!res.ok) {
+            setOrderingAudit({ ambiguous: null, actual: null });
+            return;
+          }
+          const data = (await res.json()) as {
+            ambiguous?: unknown;
+            actual?: unknown;
+          };
+          if (typeof data.ambiguous !== "boolean") {
+            setOrderingAudit({ ambiguous: null, actual: null });
+            return;
+          }
+          const actual = Array.isArray(data.actual)
+            ? data.actual.filter((l): l is string => typeof l === "string")
+            : null;
+          setOrderingAudit({ ambiguous: data.ambiguous, actual });
+        } catch (err: unknown) {
+          if (err instanceof DOMException && err.name === "AbortError") return;
+          setOrderingAudit({ ambiguous: null, actual: null });
+        }
+      })();
+    }, AUDIT_IDLE_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [numero, isGenerating, orderingKey]);
+
   const dupes = useMemo(() => duplicatePositions(payload), [payload]);
   const checks = useMemo(
     () =>
@@ -119,8 +187,10 @@ export function FicheEditor({
         payload,
         reviewWords,
         overflowPage,
+        orderingAmbiguous: orderingAudit.ambiguous,
+        orderingAuditActual: orderingAudit.actual,
       }),
-    [payload, reviewWords, overflowPage],
+    [payload, reviewWords, overflowPage, orderingAudit],
   );
   const fieldsDisabled = isGenerating || status === "validee";
   // Warnings never block export (US-5.1).

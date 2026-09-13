@@ -10,7 +10,8 @@ export type CheckId =
   | "positions"
   | "reviewWords"
   | "vocabulary"
-  | "overflow";
+  | "overflow"
+  | "orderingAmbiguity";
 
 export type CheckResult = {
   id: CheckId;
@@ -27,6 +28,13 @@ export type EvaluateFicheChecksInput = {
   reviewWords?: readonly string[];
   /** Overflowing page from the live preview, or null if none. */
   overflowPage?: 1 | 2 | 3 | null;
+  /**
+   * Ordering ambiguity audit (US-5.2).
+   * `null` / omitted → pending/failed (neutral). `true` → warn. `false` → ok.
+   */
+  orderingAmbiguous?: boolean | null;
+  /** Model's proposed label order — shown in the amber tooltip. */
+  orderingAuditActual?: readonly string[] | null;
 };
 
 const EXPECTED_TYPES: readonly QuestionType[] = [
@@ -67,7 +75,13 @@ export function isExactPermutation(positions: readonly number[]): boolean {
 export function evaluateFicheChecks(
   input: EvaluateFicheChecksInput,
 ): CheckResult[] {
-  const { payload, reviewWords = [], overflowPage = null } = input;
+  const {
+    payload,
+    reviewWords = [],
+    overflowPage = null,
+    orderingAmbiguous = null,
+    orderingAuditActual = null,
+  } = input;
   const results: CheckResult[] = [];
 
   // textLength
@@ -162,6 +176,34 @@ export function evaluateFicheChecks(
       ? undefined
       : `Débordement : un bloc dépasse la page ${overflowPage}`,
   });
+
+  // orderingAmbiguity (US-5.2)
+  if (orderingAmbiguous === null) {
+    results.push({
+      id: "orderingAmbiguity",
+      status: "neutral",
+      label: "Ordre",
+    });
+  } else if (orderingAmbiguous) {
+    const orderHint =
+      orderingAuditActual && orderingAuditActual.length > 0
+        ? orderingAuditActual.join("-")
+        : null;
+    results.push({
+      id: "orderingAmbiguity",
+      status: "warn",
+      label: "ordre ambigu",
+      detail: orderHint
+        ? `L'audit propose un autre ordre : ${orderHint}`
+        : "L'audit propose un autre ordre",
+    });
+  } else {
+    results.push({
+      id: "orderingAmbiguity",
+      status: "ok",
+      label: "Ordre",
+    });
+  }
 
   return results;
 }

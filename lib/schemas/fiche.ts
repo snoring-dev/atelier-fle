@@ -32,10 +32,12 @@ export const questionSchema = z.object({
     ),
 });
 
+export const orderingLabelSchema = z.enum(["a", "b", "c", "d", "e", "f"]);
+
 export const orderingSentenceSchema = z.object({
-  label: z
-    .enum(["a", "b", "c", "d", "e", "f"])
-    .describe("Étiquette affichée (a–f), ordre mélangé"),
+  label: orderingLabelSchema.describe(
+    "Étiquette affichée (a–f), ordre mélangé",
+  ),
   text: z
     .string()
     .describe(
@@ -47,6 +49,16 @@ export const orderingSentenceSchema = z.object({
     .min(1)
     .max(6)
     .describe("Position correcte dans le récit (1–6), permutation unique"),
+});
+
+/** Structured output for the ordering ambiguity audit (US-5.2). */
+export const orderingAuditResultSchema = z.object({
+  labels: z
+    .array(orderingLabelSchema)
+    .length(6)
+    .describe(
+      "Les six étiquettes a–f dans l'ordre chronologique ou logique unique",
+    ),
 });
 
 export const ficheSchema = z.object({

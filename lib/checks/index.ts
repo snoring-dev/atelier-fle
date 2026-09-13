@@ -1,4 +1,17 @@
 export {
+  type AuditSentence,
+  buildOrderingAuditPrompt,
+  compareOrderingAudit,
+  expectedLabelOrder,
+  isLabelPermutation,
+  labelsEqual,
+  type OrderingAuditResult,
+  type OrderingLabel,
+  prepareAuditSentences,
+  type RandomFn,
+  shuffleInPlace,
+} from "./audit";
+export {
   type CheckId,
   type CheckResult,
   type CheckStatus,
