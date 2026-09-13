@@ -4,6 +4,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE_NAME, verifySessionToken } from "@/lib/auth/session";
 import { getDatabase } from "@/lib/db";
+import { PROMPT_VERSION } from "@/lib/prompts";
+import { type FichePayload, ficheSchema } from "@/lib/schemas";
 import {
   greyedCategoriesFromRecent,
   isCatalogPair,
@@ -14,6 +16,10 @@ export type CreateFicheState = {
   error?: string;
 };
 
+export type SaveFicheDraftResult = {
+  error?: string;
+};
+
 const FREE_THEME_MAX_LENGTH = 80;
 
 async function requireSession(): Promise<boolean> {
@@ -21,6 +27,48 @@ async function requireSession(): Promise<boolean> {
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
   if (!token) return false;
   return verifySessionToken(token);
+}
+
+export async function saveFicheDraft(input: {
+  numero: number;
+  payload: FichePayload;
+  promptVersion: string | null;
+}): Promise<SaveFicheDraftResult> {
+  if (!(await requireSession())) {
+    return { error: "Session expirée. Reconnectez-vous." };
+  }
+
+  const { numero, payload, promptVersion } = input;
+  if (!Number.isFinite(numero) || numero < 1) {
+    return { error: "Identifiant invalide" };
+  }
+
+  const parsed = ficheSchema.safeParse(payload);
+  if (!parsed.success) {
+    return { error: "Contenu invalide" };
+  }
+
+  const db = getDatabase();
+  const fiche = await db.fiches.getByNumero(numero);
+  if (!fiche) {
+    return { error: "Fiche introuvable" };
+  }
+
+  if (fiche.status === "validee") {
+    return { error: "Fiche déjà validée" };
+  }
+
+  try {
+    await db.fiches.saveDraft({
+      numero,
+      payload: JSON.stringify(parsed.data),
+      promptVersion: promptVersion ?? PROMPT_VERSION,
+    });
+  } catch {
+    return { error: "Enregistrement impossible" };
+  }
+
+  return {};
 }
 
 export async function createFicheAction(
