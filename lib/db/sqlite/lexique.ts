@@ -2,7 +2,7 @@ import { and, asc, eq, lt, ne } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { textContainsTerm } from "@/lib/checks/evaluate";
 import type { LexiqueRepository } from "../ports";
-import type { LexiqueStatut } from "../types";
+import type { LexiqueEntry, LexiqueStatut } from "../types";
 import * as schema from "./schema";
 
 type Db = BetterSQLite3Database<typeof schema>;
@@ -24,8 +24,29 @@ function nextStatut(
   return current;
 }
 
+function mapRow(row: typeof schema.lexique.$inferSelect): LexiqueEntry {
+  return {
+    id: row.id,
+    mot: row.mot,
+    definition: row.definition,
+    exemple: row.exemple,
+    statut: row.statut,
+    occurrences: row.occurrences,
+    lastSeenAt: row.lastSeenAt,
+  };
+}
+
 export function createLexiqueRepository(db: Db): LexiqueRepository {
   return {
+    async list() {
+      const rows = db
+        .select()
+        .from(schema.lexique)
+        .orderBy(asc(schema.lexique.mot))
+        .all();
+      return rows.map(mapRow);
+    },
+
     async draw(limit = DEFAULT_DRAW_LIMIT) {
       if (limit <= 0) return [];
 
@@ -138,6 +159,49 @@ export function createLexiqueRepository(db: Db): LexiqueRepository {
           })
           .run();
       }
+    },
+
+    async updateContent(id, input) {
+      const existing = db
+        .select()
+        .from(schema.lexique)
+        .where(eq(schema.lexique.id, id))
+        .get();
+      if (!existing) return null;
+
+      const updated = db
+        .update(schema.lexique)
+        .set({
+          definition: input.definition,
+          exemple: input.exemple,
+        })
+        .where(eq(schema.lexique.id, id))
+        .returning()
+        .get();
+
+      return updated ? mapRow(updated) : null;
+    },
+
+    async exclude(id) {
+      const existing = db
+        .select()
+        .from(schema.lexique)
+        .where(eq(schema.lexique.id, id))
+        .get();
+      if (!existing) return null;
+
+      if (existing.statut === "exclu") {
+        return mapRow(existing);
+      }
+
+      const updated = db
+        .update(schema.lexique)
+        .set({ statut: "exclu" })
+        .where(eq(schema.lexique.id, id))
+        .returning()
+        .get();
+
+      return updated ? mapRow(updated) : null;
     },
   };
 }

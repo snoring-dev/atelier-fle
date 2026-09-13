@@ -1,5 +1,5 @@
 import type { FichePayload } from "@/lib/schemas";
-import type { Fiche, ImageRow } from "./types";
+import type { Fiche, ImageRow, LexiqueEntry } from "./types";
 
 export type CreateFicheInput = {
   theme: string;
@@ -25,6 +25,8 @@ export type FichesRepository = {
 };
 
 export type LexiqueRepository = {
+  /** All lexicon entries, alphabetical by mot. */
+  list(): Promise<LexiqueEntry[]>;
   /**
    * Draw up to `limit` words for reinjection.
    * P1: en cours last seen > 7 days (oldest first).
@@ -37,6 +39,13 @@ export type LexiqueRepository = {
    * and bump any existing non-exclu/non-acquis lexicon mots found in the text.
    */
   recordFromPayload(payload: FichePayload): Promise<void>;
+  /** Update definition/exemple only; null if id missing. */
+  updateContent(
+    id: number,
+    input: { definition: string | null; exemple: string | null },
+  ): Promise<LexiqueEntry | null>;
+  /** Set statut to exclu; null if id missing. Leaves occurrences/lastSeenAt. */
+  exclude(id: number): Promise<LexiqueEntry | null>;
 };
 
 export type ImagesRepository = {

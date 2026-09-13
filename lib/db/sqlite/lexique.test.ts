@@ -310,3 +310,112 @@ describe("lexique first-validation only (route contract)", () => {
     // Route guard: wasDraft === (status === "brouillon") before validate().
   });
 });
+
+describe("lexique list / updateContent / exclude", () => {
+  it("lists all entries alphabetical by mot", async () => {
+    const { repo, db } = makeRepo();
+    db.insert(schema.lexique)
+      .values([
+        { mot: "zeta", statut: "nouveau", occurrences: 1 },
+        { mot: "alpha", statut: "en cours", occurrences: 2 },
+        { mot: "midi", statut: "acquis", occurrences: 4 },
+      ])
+      .run();
+
+    const listed = await repo.list();
+    assert.deepEqual(
+      listed.map((e) => e.mot),
+      ["alpha", "midi", "zeta"],
+    );
+  });
+
+  it("updateContent changes definition/exemple without touching statut", async () => {
+    const { repo, db } = makeRepo();
+    const inserted = db
+      .insert(schema.lexique)
+      .values({
+        mot: "café",
+        definition: "ancienne",
+        exemple: "ex1",
+        statut: "en cours",
+        occurrences: 2,
+        lastSeenAt: new Date(),
+      })
+      .returning()
+      .get();
+
+    const updated = await repo.updateContent(inserted.id, {
+      definition: "boisson chaude",
+      exemple: "Je bois un café.",
+    });
+    assert.ok(updated);
+    assert.equal(updated.definition, "boisson chaude");
+    assert.equal(updated.exemple, "Je bois un café.");
+    assert.equal(updated.statut, "en cours");
+    assert.equal(updated.occurrences, 2);
+
+    const row = getMot(db, "café");
+    assert.equal(row?.statut, "en cours");
+    assert.equal(row?.occurrences, 2);
+  });
+
+  it("updateContent returns null for missing id", async () => {
+    const { repo } = makeRepo();
+    assert.equal(
+      await repo.updateContent(999, { definition: "x", exemple: "y" }),
+      null,
+    );
+  });
+
+  it("exclude sets statut to exclu and leaves the draw pool", async () => {
+    const { repo, db } = makeRepo();
+    const eightDaysAgo = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
+    const inserted = db
+      .insert(schema.lexique)
+      .values({
+        mot: "mauvais",
+        definition: "d",
+        exemple: "e",
+        statut: "en cours",
+        occurrences: 2,
+        lastSeenAt: eightDaysAgo,
+      })
+      .returning()
+      .get();
+
+    const excluded = await repo.exclude(inserted.id);
+    assert.ok(excluded);
+    assert.equal(excluded.statut, "exclu");
+    assert.equal(excluded.occurrences, 2);
+    assert.ok(excluded.lastSeenAt);
+
+    const row = getMot(db, "mauvais");
+    assert.equal(row?.statut, "exclu");
+    assert.equal(row?.occurrences, 2);
+
+    const drawn = await repo.draw(4);
+    assert.ok(!drawn.includes("mauvais"));
+  });
+
+  it("exclude is idempotent when already exclu", async () => {
+    const { repo, db } = makeRepo();
+    const inserted = db
+      .insert(schema.lexique)
+      .values({
+        mot: "déjà",
+        statut: "exclu",
+        occurrences: 1,
+      })
+      .returning()
+      .get();
+
+    const again = await repo.exclude(inserted.id);
+    assert.ok(again);
+    assert.equal(again.statut, "exclu");
+  });
+
+  it("exclude returns null for missing id", async () => {
+    const { repo } = makeRepo();
+    assert.equal(await repo.exclude(999), null);
+  });
+});
