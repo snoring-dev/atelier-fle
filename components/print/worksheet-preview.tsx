@@ -15,6 +15,7 @@ type WorksheetPreviewProps = {
   numero: number;
   theme: string | null;
   dateLabel: string;
+  editedFields?: ReadonlySet<string>;
 };
 
 export function WorksheetPreview({
@@ -22,6 +23,7 @@ export function WorksheetPreview({
   numero,
   theme,
   dateLabel,
+  editedFields,
 }: WorksheetPreviewProps) {
   const [page, setPage] = useState<1 | 2 | 3>(1);
 
@@ -57,6 +59,7 @@ export function WorksheetPreview({
             numero={numero}
             theme={theme}
             dateLabel={dateLabel}
+            editedFields={editedFields}
           />
         </div>
       </div>

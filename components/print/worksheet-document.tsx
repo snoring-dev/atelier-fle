@@ -1,4 +1,5 @@
 import type { FichePayload, QuestionType } from "@/lib/schemas";
+import { cn } from "@/lib/utils";
 import styles from "./worksheet.module.css";
 
 type WorksheetDocumentProps = {
@@ -7,6 +8,8 @@ type WorksheetDocumentProps = {
   theme: string | null;
   dateLabel: string;
   illustrationSrc?: string | null;
+  /** Hand-edited field paths — outlines only when provided (preview). */
+  editedFields?: ReadonlySet<string>;
 };
 
 /** Writing-line counts by question type (9 mm each).
@@ -36,15 +39,21 @@ function PageFooter({
   numero,
   theme,
   dateLabel,
+  themeEdited,
 }: {
   numero: number;
   theme: string | null;
   dateLabel: string;
+  themeEdited?: boolean;
 }) {
   const themeLabel = theme?.trim() || "Sans thème";
   return (
     <footer className={styles.footer}>
-      Fiche n°{numero} · {themeLabel} · {dateLabel}
+      Fiche n°{numero} ·{" "}
+      <span className={themeEdited ? styles.edited : undefined}>
+        {themeLabel}
+      </span>{" "}
+      · {dateLabel}
     </footer>
   );
 }
@@ -55,11 +64,14 @@ export function WorksheetDocument({
   theme,
   dateLabel,
   illustrationSrc,
+  editedFields,
 }: WorksheetDocumentProps) {
   const displayTheme = theme ?? payload.theme;
+  const themeEdited = Boolean(editedFields?.has("theme"));
   const orderedSentences = [...payload.ordering.sentences].sort(
     (a, b) => a.position - b.position,
   );
+  const isEdited = (path: string) => Boolean(editedFields?.has(path));
 
   return (
     <div className={styles.document}>
@@ -67,7 +79,11 @@ export function WorksheetDocument({
       <article className={styles.page} data-page="1">
         <div className={styles.pageBody}>
           <div className={styles.column}>
-            <h1 className={styles.title}>{payload.title}</h1>
+            <h1
+              className={cn(styles.title, isEdited("title") && styles.edited)}
+            >
+              {payload.title}
+            </h1>
 
             {illustrationSrc ? (
               // biome-ignore lint/performance/noImgElement: print asset URL; next/image not needed for Gotenberg
@@ -78,18 +94,47 @@ export function WorksheetDocument({
               />
             ) : null}
 
-            <p className={styles.text}>{payload.text}</p>
+            <p className={cn(styles.text, isEdited("text") && styles.edited)}>
+              {payload.text}
+            </p>
 
             <section className={styles.section}>
               <h2 className={styles.sectionTitle}>Vocabulaire</h2>
               <ul className={styles.vocabBox}>
-                {payload.vocabulary.map((item) => (
-                  <li key={item.term} className={styles.vocabItem}>
-                    <span className={styles.term}>{item.term}</span>
+                {payload.vocabulary.map((item, index) => (
+                  <li
+                    // biome-ignore lint/suspicious/noArrayIndexKey: fixed 6 vocab slots
+                    key={index}
+                    className={styles.vocabItem}
+                  >
+                    <span
+                      className={cn(
+                        styles.term,
+                        isEdited(`vocabulary.${index}.term`) && styles.edited,
+                      )}
+                    >
+                      {item.term}
+                    </span>
                     {" : "}
-                    {item.definition}
+                    <span
+                      className={
+                        isEdited(`vocabulary.${index}.definition`)
+                          ? styles.edited
+                          : undefined
+                      }
+                    >
+                      {item.definition}
+                    </span>
                     {" — "}
-                    <span className={styles.example}>{item.example}</span>
+                    <span
+                      className={cn(
+                        styles.example,
+                        isEdited(`vocabulary.${index}.example`) &&
+                          styles.edited,
+                      )}
+                    >
+                      {item.example}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -100,6 +145,7 @@ export function WorksheetDocument({
           numero={numero}
           theme={displayTheme}
           dateLabel={dateLabel}
+          themeEdited={themeEdited}
         />
       </article>
 
@@ -110,9 +156,20 @@ export function WorksheetDocument({
             <section className={styles.section}>
               <h2 className={styles.sectionTitle}>Compréhension</h2>
               <ol className={styles.questions}>
-                {payload.questions.map((question) => (
-                  <li key={question.prompt} className={styles.questionBlock}>
-                    <p className={styles.questionPrompt}>{question.prompt}</p>
+                {payload.questions.map((question, index) => (
+                  <li
+                    // biome-ignore lint/suspicious/noArrayIndexKey: fixed 6 question slots
+                    key={index}
+                    className={styles.questionBlock}
+                  >
+                    <p
+                      className={cn(
+                        styles.questionPrompt,
+                        isEdited(`questions.${index}.prompt`) && styles.edited,
+                      )}
+                    >
+                      {question.prompt}
+                    </p>
                     <WritingLines count={LINE_COUNTS[question.type]} />
                   </li>
                 ))}
@@ -122,12 +179,20 @@ export function WorksheetDocument({
             <section className={styles.section}>
               <h2 className={styles.sectionTitle}>Remise en ordre</h2>
               <ul className={styles.ordering}>
-                {payload.ordering.sentences.map((sentence) => (
+                {payload.ordering.sentences.map((sentence, index) => (
                   <li key={sentence.label} className={styles.orderingItem}>
                     <span className={styles.orderingBox} aria-hidden="true">
                       {sentence.label}.
                     </span>
-                    <span className={styles.orderingText}>{sentence.text}</span>
+                    <span
+                      className={cn(
+                        styles.orderingText,
+                        isEdited(`ordering.sentences.${index}.text`) &&
+                          styles.edited,
+                      )}
+                    >
+                      {sentence.text}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -150,6 +215,7 @@ export function WorksheetDocument({
           numero={numero}
           theme={displayTheme}
           dateLabel={dateLabel}
+          themeEdited={themeEdited}
         />
       </article>
 
@@ -166,19 +232,46 @@ export function WorksheetDocument({
               <h2 className={styles.sectionTitle}>Corrigé — Compréhension</h2>
               <ol className={styles.answerList}>
                 {payload.questions.map((question, index) => (
-                  <li key={question.prompt} className={styles.answerItem}>
-                    <p className={styles.answerPrompt}>
+                  <li
+                    // biome-ignore lint/suspicious/noArrayIndexKey: fixed 6 question slots
+                    key={index}
+                    className={styles.answerItem}
+                  >
+                    <p
+                      className={cn(
+                        styles.answerPrompt,
+                        isEdited(`questions.${index}.prompt`) && styles.edited,
+                      )}
+                    >
                       <span className={styles.answerNumber}>{index + 1}.</span>{" "}
                       {question.prompt}
                     </p>
                     {question.type === "opinion" ? (
                       <ul className={styles.hints}>
-                        {question.hints.map((hint) => (
-                          <li key={hint}>{hint}</li>
+                        {question.hints.map((hint, hi) => (
+                          <li
+                            // biome-ignore lint/suspicious/noArrayIndexKey: hint slot within fixed question
+                            key={hi}
+                            className={
+                              isEdited(`questions.${index}.hints.${hi}`)
+                                ? styles.edited
+                                : undefined
+                            }
+                          >
+                            {hint}
+                          </li>
                         ))}
                       </ul>
                     ) : (
-                      <p className={styles.answerText}>{question.answer}</p>
+                      <p
+                        className={cn(
+                          styles.answerText,
+                          isEdited(`questions.${index}.answer`) &&
+                            styles.edited,
+                        )}
+                      >
+                        {question.answer}
+                      </p>
                     )}
                   </li>
                 ))}
@@ -188,16 +281,37 @@ export function WorksheetDocument({
             <section className={styles.section}>
               <h2 className={styles.sectionTitle}>Corrigé — Remise en ordre</h2>
               <ol className={styles.orderedSequence}>
-                {orderedSentences.map((sentence) => (
-                  <li key={sentence.label} className={styles.orderedItem}>
-                    <span className={styles.label}>{sentence.label}.</span>{" "}
-                    {sentence.text}
-                  </li>
-                ))}
+                {orderedSentences.map((sentence) => {
+                  const originalIndex = payload.ordering.sentences.findIndex(
+                    (s) => s.label === sentence.label,
+                  );
+                  const marked =
+                    isEdited(`ordering.sentences.${originalIndex}.text`) ||
+                    isEdited(`ordering.sentences.${originalIndex}.position`);
+                  return (
+                    <li
+                      key={sentence.label}
+                      className={cn(
+                        styles.orderedItem,
+                        marked && styles.edited,
+                      )}
+                    >
+                      <span className={styles.label}>{sentence.label}.</span>{" "}
+                      {sentence.text}
+                    </li>
+                  );
+                })}
               </ol>
 
               <h3 className={styles.rationaleTitle}>Pourquoi cet ordre ?</h3>
-              <p className={styles.rationale}>{payload.ordering.rationale}</p>
+              <p
+                className={cn(
+                  styles.rationale,
+                  isEdited("ordering.rationale") && styles.edited,
+                )}
+              >
+                {payload.ordering.rationale}
+              </p>
             </section>
           </div>
         </div>
@@ -205,6 +319,7 @@ export function WorksheetDocument({
           numero={numero}
           theme={displayTheme}
           dateLabel={dateLabel}
+          themeEdited={themeEdited}
         />
       </article>
     </div>

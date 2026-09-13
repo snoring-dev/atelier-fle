@@ -20,6 +20,9 @@ import { cn } from "@/lib/utils";
 const POSITIONS = [1, 2, 3, 4, 5, 6] as const;
 const SAVE_IDLE_MS = 800;
 
+/** Paths with no counterpart in the worksheet preview. */
+const PREVIEW_SKIP = new Set(["category", "illustration.description"]);
+
 type FicheEditorProps = {
   numero: number;
   status: "brouillon" | "validee";
@@ -47,6 +50,22 @@ function duplicatePositions(payload: FichePayload): Set<number> {
   return dupes;
 }
 
+function clearSectionMarks(
+  fields: Set<string>,
+  section: FicheSection,
+): Set<string> {
+  const next = new Set(fields);
+  if (section === "text") {
+    next.delete("text");
+    return next;
+  }
+  const prefix = section === "questions" ? "questions." : "ordering.";
+  for (const path of fields) {
+    if (path.startsWith(prefix)) next.delete(path);
+  }
+  return next;
+}
+
 export function FicheEditor({
   numero,
   status,
@@ -60,6 +79,7 @@ export function FicheEditor({
 }: FicheEditorProps) {
   const router = useRouter();
   const [payload, setPayload] = useState<FichePayload>(initialPayload);
+  const [editedFields, setEditedFields] = useState<Set<string>>(() => new Set());
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -133,9 +153,25 @@ export function FicheEditor({
     }
   }
 
-  function patch(updater: (prev: FichePayload) => FichePayload) {
+  function patch(
+    updater: (prev: FichePayload) => FichePayload,
+    path?: string,
+  ) {
     dirtyRef.current = true;
+    if (path && !PREVIEW_SKIP.has(path)) {
+      setEditedFields((prev) => {
+        if (prev.has(path)) return prev;
+        const next = new Set(prev);
+        next.add(path);
+        return next;
+      });
+    }
     setPayload((prev) => updater(prev));
+  }
+
+  function regenerateSection(section: FicheSection) {
+    setEditedFields((prev) => clearSectionMarks(prev, section));
+    onRegenerateSection(section, payload);
   }
 
   return (
@@ -152,7 +188,7 @@ export function FicheEditor({
         <Button
           type="button"
           disabled={isGenerating || status === "validee"}
-          onClick={() => onRegenerateSection("text", payload)}
+          onClick={() => regenerateSection("text")}
         >
           Régénérer le texte
         </Button>
@@ -160,7 +196,7 @@ export function FicheEditor({
           type="button"
           variant="outline"
           disabled={isGenerating || status === "validee"}
-          onClick={() => onRegenerateSection("questions", payload)}
+          onClick={() => regenerateSection("questions")}
         >
           Régénérer les questions
         </Button>
@@ -168,7 +204,7 @@ export function FicheEditor({
           type="button"
           variant="outline"
           disabled={isGenerating || status === "validee"}
-          onClick={() => onRegenerateSection("ordering", payload)}
+          onClick={() => regenerateSection("ordering")}
         >
           Régénérer l&apos;ordre
         </Button>
@@ -231,7 +267,7 @@ export function FicheEditor({
                       value={payload.title}
                       disabled={fieldsDisabled}
                       onChange={(e) =>
-                        patch((p) => ({ ...p, title: e.target.value }))
+                        patch((p) => ({ ...p, title: e.target.value }), "title")
                       }
                     />
                   </div>
@@ -241,7 +277,7 @@ export function FicheEditor({
                       value={payload.theme}
                       disabled={fieldsDisabled}
                       onChange={(e) =>
-                        patch((p) => ({ ...p, theme: e.target.value }))
+                        patch((p) => ({ ...p, theme: e.target.value }), "theme")
                       }
                     />
                   </div>
@@ -251,7 +287,10 @@ export function FicheEditor({
                       value={payload.category}
                       disabled={fieldsDisabled}
                       onChange={(e) =>
-                        patch((p) => ({ ...p, category: e.target.value }))
+                        patch(
+                          (p) => ({ ...p, category: e.target.value }),
+                          "category",
+                        )
                       }
                     />
                   </div>
@@ -263,10 +302,13 @@ export function FicheEditor({
                       value={payload.illustration.description}
                       disabled={fieldsDisabled}
                       onChange={(e) =>
-                        patch((p) => ({
-                          ...p,
-                          illustration: { description: e.target.value },
-                        }))
+                        patch(
+                          (p) => ({
+                            ...p,
+                            illustration: { description: e.target.value },
+                          }),
+                          "illustration.description",
+                        )
                       }
                     />
                   </div>
@@ -282,7 +324,7 @@ export function FicheEditor({
                   value={payload.text}
                   disabled={fieldsDisabled}
                   onChange={(e) =>
-                    patch((p) => ({ ...p, text: e.target.value }))
+                    patch((p) => ({ ...p, text: e.target.value }), "text")
                   }
                 />
               </AccordionContent>
@@ -311,7 +353,7 @@ export function FicheEditor({
                                 term: e.target.value,
                               };
                               return { ...p, vocabulary };
-                            })
+                            }, `vocabulary.${index}.term`)
                           }
                         />
                       </div>
@@ -328,7 +370,7 @@ export function FicheEditor({
                                 definition: e.target.value,
                               };
                               return { ...p, vocabulary };
-                            })
+                            }, `vocabulary.${index}.definition`)
                           }
                         />
                       </div>
@@ -345,7 +387,7 @@ export function FicheEditor({
                                 example: e.target.value,
                               };
                               return { ...p, vocabulary };
-                            })
+                            }, `vocabulary.${index}.example`)
                           }
                         />
                       </div>
@@ -381,7 +423,7 @@ export function FicheEditor({
                                 prompt: e.target.value,
                               };
                               return { ...p, questions };
-                            })
+                            }, `questions.${index}.prompt`)
                           }
                         />
                       </div>
@@ -405,7 +447,7 @@ export function FicheEditor({
                                     hints,
                                   };
                                   return { ...p, questions };
-                                })
+                                }, `questions.${index}.hints.${hi}`)
                               }
                             />
                           ))}
@@ -424,7 +466,7 @@ export function FicheEditor({
                                   answer: e.target.value,
                                 };
                                 return { ...p, questions };
-                              })
+                              }, `questions.${index}.answer`)
                             }
                           />
                         </div>
@@ -461,7 +503,7 @@ export function FicheEditor({
                                 ...p,
                                 ordering: { ...p.ordering, sentences },
                               };
-                            })
+                            }, `ordering.sentences.${index}.text`)
                           }
                         />
                         <div className="flex flex-col gap-1">
@@ -484,7 +526,7 @@ export function FicheEditor({
                                   ...p,
                                   ordering: { ...p.ordering, sentences },
                                 };
-                              });
+                              }, `ordering.sentences.${index}.position`);
                             }}
                           >
                             {POSITIONS.map((n) => (
@@ -512,13 +554,16 @@ export function FicheEditor({
                     value={payload.ordering.rationale}
                     disabled={fieldsDisabled}
                     onChange={(e) =>
-                      patch((p) => ({
-                        ...p,
-                        ordering: {
-                          ...p.ordering,
-                          rationale: e.target.value,
-                        },
-                      }))
+                      patch(
+                        (p) => ({
+                          ...p,
+                          ordering: {
+                            ...p.ordering,
+                            rationale: e.target.value,
+                          },
+                        }),
+                        "ordering.rationale",
+                      )
                     }
                   />
                 </div>
@@ -533,6 +578,7 @@ export function FicheEditor({
             numero={numero}
             theme={payload.theme}
             dateLabel={dateLabel}
+            editedFields={editedFields}
           />
         </div>
       </div>
