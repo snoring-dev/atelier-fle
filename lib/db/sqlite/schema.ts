@@ -11,6 +11,10 @@ export const fiches = sqliteTable("fiches", {
   promptVersion: text("prompt_version"),
   /** JSON string array of lexicon words drawn for reinjection (US-7.1). */
   reviewWords: text("review_words"),
+  /** Accumulated OpenRouter text cost in microdollars (generate + section + audit). */
+  textCostMicros: integer("text_cost_micros").notNull().default(0),
+  /** Accumulated OpenRouter image cost in microdollars (all illustration runs). */
+  imageCostMicros: integer("image_cost_micros").notNull().default(0),
   validatedAt: integer("validated_at", { mode: "timestamp" }),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()

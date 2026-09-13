@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type { FichesRepository } from "../ports";
 import type { Fiche } from "../types";
@@ -31,6 +31,8 @@ function mapRow(row: typeof schema.fiches.$inferSelect): Fiche {
     category: row.category,
     promptVersion: row.promptVersion,
     reviewWords: parseReviewWords(row.reviewWords),
+    textCostMicros: row.textCostMicros ?? 0,
+    imageCostMicros: row.imageCostMicros ?? 0,
     validatedAt: row.validatedAt,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -94,6 +96,45 @@ export function createFichesRepository(db: Db): FichesRepository {
         .set({
           payload,
           promptVersion,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.fiches.numero, numero))
+        .returning()
+        .get();
+
+      if (!updated) {
+        throw new Error(`Fiche ${numero} introuvable`);
+      }
+      return mapRow(updated);
+    },
+
+    async addUsage(numero, { textMicros = 0, imageMicros = 0 }) {
+      const textDelta =
+        Number.isFinite(textMicros) && textMicros > 0
+          ? Math.round(textMicros)
+          : 0;
+      const imageDelta =
+        Number.isFinite(imageMicros) && imageMicros > 0
+          ? Math.round(imageMicros)
+          : 0;
+
+      if (textDelta === 0 && imageDelta === 0) {
+        const existing = db
+          .select()
+          .from(schema.fiches)
+          .where(eq(schema.fiches.numero, numero))
+          .get();
+        if (!existing) {
+          throw new Error(`Fiche ${numero} introuvable`);
+        }
+        return mapRow(existing);
+      }
+
+      const updated = db
+        .update(schema.fiches)
+        .set({
+          textCostMicros: sql`${schema.fiches.textCostMicros} + ${textDelta}`,
+          imageCostMicros: sql`${schema.fiches.imageCostMicros} + ${imageDelta}`,
           updatedAt: new Date(),
         })
         .where(eq(schema.fiches.numero, numero))
@@ -177,6 +218,8 @@ export function createFichesRepository(db: Db): FichesRepository {
           category: source.category,
           promptVersion: source.promptVersion,
           reviewWords: null,
+          textCostMicros: 0,
+          imageCostMicros: 0,
           validatedAt: null,
           createdAt: now,
           updatedAt: now,

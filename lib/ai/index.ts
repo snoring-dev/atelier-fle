@@ -24,9 +24,13 @@ import {
   textSectionSchema,
 } from "@/lib/schemas";
 import { getModelId, getOpenRouterApiKey } from "./env";
+import { costFromStreamResult } from "./usage";
 
 const TEMPERATURE = 0.8;
 const AUDIT_TEMPERATURE = 0;
+
+/** OpenRouter model options: request usage accounting for billed cost. */
+const MODEL_USAGE = { usage: { include: true } } as const;
 
 export type StreamFicheInput = {
   theme: string;
@@ -44,17 +48,20 @@ export type StreamFicheSectionInput = {
 
 type StreamResult = ReturnType<typeof streamText>;
 
+function createModel() {
+  const openrouter = createOpenRouter({
+    apiKey: getOpenRouterApiKey(),
+  });
+  return openrouter(getModelId(), MODEL_USAGE);
+}
+
 /**
  * Stream a full worksheet object via OpenRouter.
  * Callers get the SDK result: stream to the client, await `output` to persist.
  */
 export function streamFiche(input: StreamFicheInput) {
-  const openrouter = createOpenRouter({
-    apiKey: getOpenRouterApiKey(),
-  });
-
   return streamText({
-    model: openrouter(getModelId()),
+    model: createModel(),
     temperature: TEMPERATURE,
     system: SYSTEM_PROMPT,
     prompt: buildFicheUserPrompt({
@@ -76,10 +83,6 @@ export function streamFiche(input: StreamFicheInput) {
  * Schema is a Zod `.pick()` of ficheSchema; the rest of the fiche is prompt context.
  */
 export function streamFicheSection(input: StreamFicheSectionInput) {
-  const openrouter = createOpenRouter({
-    apiKey: getOpenRouterApiKey(),
-  });
-
   const prompt = buildFicheSectionUserPrompt({
     section: input.section,
     payload: input.payload,
@@ -87,7 +90,7 @@ export function streamFicheSection(input: StreamFicheSectionInput) {
   });
 
   const common = {
-    model: openrouter(getModelId()),
+    model: createModel(),
     temperature: TEMPERATURE,
     system: SYSTEM_PROMPT,
     prompt,
@@ -134,16 +137,13 @@ export function ficheStreamResponse(result: StreamResult): Response {
 /**
  * Blind reorder of shuffled ordering sentences (US-5.2).
  * Temperature 0; never receives positions or rationale.
+ * Also returns billed USD when OpenRouter reports it (null if unavailable).
  */
 export async function auditOrderingSentences(
   sentences: readonly AuditSentence[],
-): Promise<{ labels: string[] }> {
-  const openrouter = createOpenRouter({
-    apiKey: getOpenRouterApiKey(),
-  });
-
+): Promise<{ labels: string[]; costUsd: number | null }> {
   const result = await generateText({
-    model: openrouter(getModelId()),
+    model: createModel(),
     temperature: AUDIT_TEMPERATURE,
     system: ORDERING_AUDIT_SYSTEM_PROMPT,
     prompt: buildOrderingAuditUserPrompt(sentences),
@@ -158,5 +158,6 @@ export async function auditOrderingSentences(
     throw new Error("Audit ordering: empty model output");
   }
 
-  return result.output;
+  const costUsd = await costFromStreamResult(result);
+  return { labels: result.output.labels, costUsd };
 }

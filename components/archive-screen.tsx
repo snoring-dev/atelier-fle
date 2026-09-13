@@ -8,6 +8,7 @@ import { Heading } from "@/components/heading";
 import { Text } from "@/components/text";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { microsToUsd } from "@/lib/ai/cost";
 import type { FicheStatus } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +22,13 @@ const STATUS_FILTERS: { value: FilterStatus; label: string }[] = [
 
 const THEME_ALL = "__tous__";
 
+const usdFormatter = new Intl.NumberFormat("fr-FR", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 4,
+});
+
 export type ArchiveRow = {
   numero: number;
   status: FicheStatus;
@@ -28,10 +36,40 @@ export type ArchiveRow = {
   title: string;
   dateLabel: string;
   hasPayload: boolean;
+  textCostMicros: number;
+  imageCostMicros: number;
 };
 
 function statusLabel(status: FicheStatus): string {
   return status === "validee" ? "Validée" : "Brouillon";
+}
+
+function formatUsd(micros: number): string {
+  return usdFormatter.format(microsToUsd(micros));
+}
+
+function CostCell({
+  textCostMicros,
+  imageCostMicros,
+}: {
+  textCostMicros: number;
+  imageCostMicros: number;
+}) {
+  const text = Number.isFinite(textCostMicros) ? textCostMicros : 0;
+  const images = Number.isFinite(imageCostMicros) ? imageCostMicros : 0;
+  const total = text + images;
+  if (total <= 0) {
+    return <span className="text-muted-foreground">—</span>;
+  }
+
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="tabular-nums font-medium">{formatUsd(total)}</span>
+      <span className="text-xs text-muted-foreground tabular-nums">
+        texte {formatUsd(text)} · images {formatUsd(images)}
+      </span>
+    </div>
+  );
 }
 
 type ArchiveScreenProps = {
@@ -59,6 +97,14 @@ export function ArchiveScreen({ fiches }: ArchiveScreenProps) {
       return true;
     });
   }, [fiches, statusFilter, themeFilter]);
+
+  const filteredCostTotal = useMemo(() => {
+    return filtered.reduce((sum, f) => {
+      const text = Number.isFinite(f.textCostMicros) ? f.textCostMicros : 0;
+      const images = Number.isFinite(f.imageCostMicros) ? f.imageCostMicros : 0;
+      return sum + text + images;
+    }, 0);
+  }, [filtered]);
 
   function handleDuplicate(numero: number) {
     startTransition(async () => {
@@ -170,6 +216,7 @@ export function ArchiveScreen({ fiches }: ArchiveScreenProps) {
                 <th className="px-3 py-2 font-medium">Thème</th>
                 <th className="px-3 py-2 font-medium">Titre</th>
                 <th className="px-3 py-2 font-medium">Statut</th>
+                <th className="px-3 py-2 font-medium">Coût</th>
                 <th className="px-3 py-2 font-medium">Actions</th>
               </tr>
             </thead>
@@ -194,6 +241,12 @@ export function ArchiveScreen({ fiches }: ArchiveScreenProps) {
                     >
                       {statusLabel(fiche.status)}
                     </Badge>
+                  </td>
+                  <td className="px-3 py-2">
+                    <CostCell
+                      textCostMicros={fiche.textCostMicros}
+                      imageCostMicros={fiche.imageCostMicros}
+                    />
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex flex-wrap gap-1.5">
@@ -230,6 +283,20 @@ export function ArchiveScreen({ fiches }: ArchiveScreenProps) {
                 </tr>
               ))}
             </tbody>
+            <tfoot>
+              <tr className="border-t bg-muted/30">
+                <td
+                  colSpan={5}
+                  className="px-3 py-2 text-right font-medium text-muted-foreground"
+                >
+                  Total (filtre)
+                </td>
+                <td className="px-3 py-2 tabular-nums font-medium">
+                  {filteredCostTotal > 0 ? formatUsd(filteredCostTotal) : "—"}
+                </td>
+                <td className="px-3 py-2" />
+              </tr>
+            </tfoot>
           </table>
         </div>
       ) : null}

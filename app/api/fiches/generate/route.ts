@@ -1,5 +1,6 @@
 import { after } from "next/server";
 import { ficheStreamResponse, streamFiche } from "@/lib/ai";
+import { costFromStreamResult, usdToMicros } from "@/lib/ai/usage";
 import { requireSession } from "@/lib/auth/require-session";
 import { ensureReviewWords, getDatabase } from "@/lib/db";
 import { PROMPT_VERSION } from "@/lib/prompts";
@@ -68,6 +69,17 @@ export async function POST(req: Request) {
       });
     } catch (err: unknown) {
       console.error("Failed to save fiche draft after generation:", err);
+    }
+
+    try {
+      const costUsd = await costFromStreamResult(result);
+      if (costUsd != null && costUsd > 0) {
+        await db.fiches.addUsage(numero, {
+          textMicros: usdToMicros(costUsd),
+        });
+      }
+    } catch (err: unknown) {
+      console.error("Failed to record text generation cost:", err);
     }
   });
 

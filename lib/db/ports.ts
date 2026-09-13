@@ -12,6 +12,11 @@ export type SaveDraftInput = {
   promptVersion: string;
 };
 
+export type AddUsageInput = {
+  textMicros?: number;
+  imageMicros?: number;
+};
+
 /** Repository surfaces — methods arrive with later stories. */
 export type FichesRepository = {
   create(input: CreateFicheInput): Promise<Fiche>;
@@ -20,13 +25,15 @@ export type FichesRepository = {
   list(): Promise<Fiche[]>;
   listRecent(limit: number): Promise<Fiche[]>;
   saveDraft(input: SaveDraftInput): Promise<Fiche>;
+  /** Increment accumulated generation costs (microdollars). No-op when both deltas are 0. */
+  addUsage(numero: number, input: AddUsageInput): Promise<Fiche>;
   /** Mark brouillon as validee; no-op if already validated. */
   validate(numero: number): Promise<Fiche>;
   /** Persist lexicon draw for this fiche (set once; leave untouched by saveDraft). */
   setReviewWords(numero: number, words: readonly string[]): Promise<Fiche>;
   /**
    * Clone a fiche as a new brouillon with a new numero.
-   * Copies theme/category/payload/promptVersion; clears reviewWords and validation.
+   * Copies theme/category/payload/promptVersion; clears reviewWords, validation, and costs.
    */
   duplicate(numero: number): Promise<Fiche>;
 };

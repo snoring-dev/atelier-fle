@@ -1,3 +1,4 @@
+import { costUsdFromOpenRouterUsage } from "./cost";
 import { getImageModelId, getOpenRouterApiKey } from "./env";
 
 /** Fixed suffix imposed by US-6.1. */
@@ -11,7 +12,14 @@ const OPENROUTER_IMAGES_URL = "https://openrouter.ai/api/v1/images";
 
 type ImageResponse = {
   data?: Array<{ b64_json?: string }>;
+  usage?: unknown;
   error?: { message?: string };
+};
+
+export type GeneratedIllustration = {
+  bytes: Uint8Array;
+  /** Billed USD for this call, or null when OpenRouter omitted usage.cost. */
+  costUsd: number | null;
 };
 
 function decodePng(b64: string): Uint8Array {
@@ -23,7 +31,7 @@ function decodePng(b64: string): Uint8Array {
  * Generate one line-drawing PNG via OpenRouter's Image API.
  * Gemini image models reject n > 1, so callers request four in parallel.
  */
-async function generateOne(prompt: string): Promise<Uint8Array> {
+async function generateOne(prompt: string): Promise<GeneratedIllustration> {
   const res = await fetch(OPENROUTER_IMAGES_URL, {
     method: "POST",
     headers: {
@@ -48,19 +56,27 @@ async function generateOne(prompt: string): Promise<Uint8Array> {
   const json = (await res.json()) as ImageResponse;
   const b64 = json.data?.[0]?.b64_json;
   if (!b64) {
-    throw new Error(json.error?.message ?? "OpenRouter image API returned no image");
+    throw new Error(
+      json.error?.message ?? "OpenRouter image API returned no image",
+    );
   }
-  return decodePng(b64);
+  return {
+    bytes: decodePng(b64),
+    costUsd: costUsdFromOpenRouterUsage(json.usage),
+  };
 }
 
 /**
  * Generate four line-drawing PNG buffers for a fiche illustration.
+ * Returns images plus the sum of billed USD across successful calls.
  */
 export async function generateFicheIllustrations(
   description: string,
-): Promise<Uint8Array[]> {
+): Promise<{ images: GeneratedIllustration[]; totalCostUsd: number }> {
   const prompt = `${description.trim()}. ${PROMPT_SUFFIX}`;
-  return Promise.all(
+  const images = await Promise.all(
     Array.from({ length: IMAGE_COUNT }, () => generateOne(prompt)),
   );
+  const totalCostUsd = images.reduce((sum, img) => sum + (img.costUsd ?? 0), 0);
+  return { images, totalCostUsd };
 }

@@ -1,4 +1,5 @@
 import { generateFicheIllustrations } from "@/lib/ai/image";
+import { usdToMicros } from "@/lib/ai/usage";
 import { requireSession } from "@/lib/auth/require-session";
 import { getDatabase } from "@/lib/db";
 import { deleteIllustration, saveIllustration } from "@/lib/media/storage";
@@ -71,9 +72,10 @@ export async function POST(_req: Request, context: RouteContext) {
   const previous = await db.images.deleteByFiche(numero);
   await Promise.all(previous.map((row) => deleteIllustration(row.path)));
 
-  let bytesList: Uint8Array[];
+  let images: Awaited<ReturnType<typeof generateFicheIllustrations>>["images"];
+  let totalCostUsd: number;
   try {
-    bytesList = await generateFicheIllustrations(description);
+    ({ images, totalCostUsd } = await generateFicheIllustrations(description));
   } catch (err: unknown) {
     console.error("Image generation failed:", err);
     const detail = err instanceof Error ? err.message : "";
@@ -86,9 +88,19 @@ export async function POST(_req: Request, context: RouteContext) {
   }
 
   const paths = await Promise.all(
-    bytesList.map((bytes) => saveIllustration(numero, bytes)),
+    images.map((img) => saveIllustration(numero, img.bytes)),
   );
   const rows = await db.images.createMany(numero, paths);
+
+  if (totalCostUsd > 0) {
+    try {
+      await db.fiches.addUsage(numero, {
+        imageMicros: usdToMicros(totalCostUsd),
+      });
+    } catch (err: unknown) {
+      console.error("Failed to record image generation cost:", err);
+    }
+  }
 
   return Response.json({
     images: rows.map((img) => ({

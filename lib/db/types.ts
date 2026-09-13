@@ -11,6 +11,10 @@ export type Fiche = {
   promptVersion: string | null;
   /** Lexicon words drawn for reinjection (US-7.1). Null until first draw. */
   reviewWords: string[] | null;
+  /** Accumulated OpenRouter text cost in microdollars. */
+  textCostMicros: number;
+  /** Accumulated OpenRouter image cost in microdollars. */
+  imageCostMicros: number;
   validatedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;

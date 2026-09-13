@@ -1,4 +1,5 @@
 import { auditOrderingSentences } from "@/lib/ai";
+import { usdToMicros } from "@/lib/ai/usage";
 import { requireSession } from "@/lib/auth/require-session";
 import {
   compareOrderingAudit,
@@ -54,8 +55,19 @@ export async function POST(req: Request, context: RouteContext) {
   const shuffled = prepareAuditSentences(payload.ordering.sentences);
 
   try {
-    const { labels } = await auditOrderingSentences(shuffled);
+    const { labels, costUsd } = await auditOrderingSentences(shuffled);
     const result = compareOrderingAudit(expected, labels);
+
+    if (costUsd != null && costUsd > 0) {
+      try {
+        await db.fiches.addUsage(numero, {
+          textMicros: usdToMicros(costUsd),
+        });
+      } catch (err: unknown) {
+        console.error("Failed to record audit cost:", err);
+      }
+    }
+
     return Response.json(result);
   } catch (err: unknown) {
     console.error("Ordering audit failed:", err);

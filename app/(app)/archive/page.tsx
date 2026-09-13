@@ -23,6 +23,8 @@ export default async function ArchivePage() {
     title: parsePayload(fiche.payload)?.title?.trim() || "Sans titre",
     dateLabel: formatDateLabel(fiche.createdAt),
     hasPayload: fiche.payload != null && fiche.payload.length > 0,
+    textCostMicros: fiche.textCostMicros ?? 0,
+    imageCostMicros: fiche.imageCostMicros ?? 0,
   }));
 
   return (
