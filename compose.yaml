@@ -13,8 +13,10 @@ services:
       DATABASE_URL: file:/app/data/fle.db
       GOTENBERG_URL: http://pdf:3000
       PUBLIC_INTERNAL_URL: http://web:3000
+      MEDIA_DIR: /app/data/media
     volumes:
       - fle-data:/app/data
+      - fle-media:/app/data/media
     depends_on:
       - pdf
 
@@ -28,3 +30,4 @@ services:
 
 volumes:
   fle-data:
+  fle-media:

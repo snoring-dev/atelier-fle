@@ -27,8 +27,14 @@ export type LexiqueRepository = {
 };
 
 export type ImagesRepository = {
-  // US-6.1+: createMany, markRetenue, listByFiche, …
-  readonly _entity: ImageRow;
+  createMany(numero: number, paths: readonly string[]): Promise<ImageRow[]>;
+  listByFiche(numero: number): Promise<ImageRow[]>;
+  getById(numero: number, imageId: number): Promise<ImageRow | null>;
+  getRetenue(numero: number): Promise<ImageRow | null>;
+  /** Transactionally set exactly one image to retenue for this fiche. */
+  markRetenue(numero: number, imageId: number): Promise<ImageRow>;
+  /** Delete rows for a fiche and return them (caller unlinks files). */
+  deleteByFiche(numero: number): Promise<ImageRow[]>;
 };
 
 export type Database = {

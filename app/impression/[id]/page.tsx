@@ -43,12 +43,18 @@ export default async function ImpressionPage({
     notFound();
   }
 
+  const retenue = await getDatabase().images.getRetenue(fiche.numero);
+  const illustrationSrc = retenue
+    ? `/api/fiches/${fiche.numero}/images/${retenue.id}?t=${encodeURIComponent(t)}`
+    : null;
+
   return (
     <WorksheetDocument
       payload={payload}
       numero={fiche.numero}
       theme={fiche.theme}
       dateLabel={formatDateLabel(fiche.createdAt)}
+      illustrationSrc={illustrationSrc}
     />
   );
 }

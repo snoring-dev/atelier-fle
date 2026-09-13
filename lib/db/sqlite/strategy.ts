@@ -4,6 +4,7 @@ import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import type { Database as DatabasePort } from "../ports";
 import { createFichesRepository } from "./fiches";
+import { createImagesRepository } from "./images";
 import * as schema from "./schema";
 
 function resolveSqlitePath(databaseUrl: string): string {
@@ -33,6 +34,6 @@ export function createSqliteStrategy(databaseUrl: string): DatabasePort {
     },
     fiches: createFichesRepository(db),
     lexique: { _entity: undefined as never },
-    images: { _entity: undefined as never },
+    images: createImagesRepository(db),
   };
 }

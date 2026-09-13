@@ -20,6 +20,8 @@ type WorksheetPreviewProps = {
   theme: string | null;
   dateLabel: string;
   editedFields?: ReadonlySet<string>;
+  /** URL of the `retenue` illustration; preview always renders it desaturated. */
+  illustrationSrc?: string | null;
   onOverflowChange?: (page: OverflowPage | null) => void;
 };
 
@@ -34,6 +36,7 @@ export function WorksheetPreview({
   theme,
   dateLabel,
   editedFields,
+  illustrationSrc,
   onOverflowChange,
 }: WorksheetPreviewProps) {
   const [page, setPage] = useState<OverflowPage>(1);
@@ -133,6 +136,7 @@ export function WorksheetPreview({
               z-index: 1;
               pointer-events: auto;
             }
+            [data-preview-page] img { filter: grayscale(1); }
           `}</style>
           <WorksheetDocument
             payload={payload}
@@ -140,6 +144,7 @@ export function WorksheetPreview({
             theme={theme}
             dateLabel={dateLabel}
             editedFields={editedFields}
+            illustrationSrc={illustrationSrc}
           />
         </div>
       </div>

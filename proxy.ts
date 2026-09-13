@@ -28,6 +28,21 @@ export async function proxy(request: NextRequest) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
+  // Chromium fetches inline illustration bytes while rendering /impression/N.
+  // Same print token, same fiche — pass through when it verifies (session check still wins if present).
+  const imageMatch = pathname.match(/^\/api\/fiches\/(\d+)\/images\/\d+\/?$/);
+  if (imageMatch) {
+    const ficheId = Number(imageMatch[1]);
+    const printToken = request.nextUrl.searchParams.get("t");
+    if (
+      printToken &&
+      Number.isFinite(ficheId) &&
+      (await consumePrintToken(printToken, ficheId))
+    ) {
+      return NextResponse.next();
+    }
+  }
+
   const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   if (sessionToken && (await verifySessionToken(sessionToken))) {
     return NextResponse.next();

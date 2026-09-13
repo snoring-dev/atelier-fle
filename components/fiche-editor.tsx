@@ -51,6 +51,12 @@ type OrderingAuditState = {
   actual: string[] | null;
 };
 
+type IllustrationOption = {
+  id: number;
+  url: string;
+  retenue: boolean;
+};
+
 function duplicatePositions(payload: FichePayload): Set<number> {
   const counts = new Map<number, number>();
   for (const s of payload.ordering.sentences) {
@@ -111,6 +117,11 @@ export function FicheEditor({
     ambiguous: null,
     actual: null,
   });
+  const [illustrations, setIllustrations] = useState<IllustrationOption[]>([]);
+  const [generatingIllustrations, setGeneratingIllustrations] = useState(false);
+  const [illustrationError, setIllustrationError] = useState<string | null>(
+    null,
+  );
   /** Only hand edits may autosave — never stream/sync snapshots. */
   const dirtyRef = useRef(false);
   const promptVersionRef = useRef(promptVersion);
@@ -128,6 +139,66 @@ export function FicheEditor({
   useEffect(() => {
     promptVersionRef.current = promptVersion;
   }, [promptVersion]);
+
+  // Load existing illustrations (if any) once per fiche.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(`/api/fiches/${numero}/images`);
+        if (!res.ok) return;
+        const data = (await res.json()) as { images?: IllustrationOption[] };
+        if (!cancelled && Array.isArray(data.images)) {
+          setIllustrations(data.images);
+        }
+      } catch {
+        // ponytail: silent — user retries via the button.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [numero]);
+
+  async function handleGenerateIllustrations() {
+    setIllustrationError(null);
+    setGeneratingIllustrations(true);
+    try {
+      const res = await fetch(`/api/fiches/${numero}/images`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const msg = await res.text().catch(() => "");
+        throw new Error(msg || `Échec (${res.status})`);
+      }
+      const data = (await res.json()) as { images: IllustrationOption[] };
+      setIllustrations(data.images);
+    } catch (err: unknown) {
+      setIllustrationError(
+        err instanceof Error ? err.message : "Génération impossible",
+      );
+    } finally {
+      setGeneratingIllustrations(false);
+    }
+  }
+
+  async function handleSelectIllustration(imageId: number) {
+    const previous = illustrations;
+    setIllustrations((prev) =>
+      prev.map((img) => ({ ...img, retenue: img.id === imageId })),
+    );
+    try {
+      const res = await fetch(`/api/fiches/${numero}/images/${imageId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ retenue: true }),
+      });
+      if (!res.ok) throw new Error(`Échec (${res.status})`);
+    } catch {
+      setIllustrations(previous);
+      setIllustrationError("Sélection impossible");
+    }
+  }
 
   const orderingKey = useMemo(() => orderingFingerprint(payload), [payload]);
   const payloadRef = useRef(payload);
@@ -300,8 +371,17 @@ export function FicheEditor({
         >
           Régénérer l&apos;ordre
         </Button>
-        <Button type="button" disabled>
-          Générer l&apos;illustration
+        <Button
+          type="button"
+          variant="outline"
+          disabled={
+            fieldsDisabled ||
+            generatingIllustrations ||
+            !payload.illustration.description.trim()
+          }
+          onClick={() => void handleGenerateIllustrations()}
+        >
+          {generatingIllustrations ? "Génération…" : "Générer l’illustration"}
         </Button>
         <Button
           type="button"
@@ -339,6 +419,44 @@ export function FicheEditor({
         <p className="text-[14px] text-destructive" role="alert">
           {saveError}
         </p>
+      ) : null}
+      {illustrationError ? (
+        <p className="text-[14px] text-destructive" role="alert">
+          {illustrationError}
+        </p>
+      ) : null}
+
+      {illustrations.length > 0 ? (
+        <ul className="hidden grid-cols-2 gap-3 sm:grid-cols-4 lg:grid">
+          {illustrations.map((img) => (
+            <li key={img.id}>
+              <button
+                type="button"
+                disabled={fieldsDisabled || generatingIllustrations}
+                onClick={() => void handleSelectIllustration(img.id)}
+                aria-pressed={img.retenue}
+                aria-label={
+                  img.retenue
+                    ? "Illustration retenue"
+                    : "Choisir cette illustration"
+                }
+                className={cn(
+                  "block w-full overflow-hidden rounded-md border-2 bg-white transition",
+                  img.retenue
+                    ? "border-primary"
+                    : "border-transparent hover:border-border",
+                )}
+              >
+                {/* biome-ignore lint/performance/noImgElement: served by our own API route */}
+                <img
+                  src={img.url}
+                  alt=""
+                  className="block aspect-[3/2] w-full object-cover grayscale"
+                />
+              </button>
+            </li>
+          ))}
+        </ul>
       ) : null}
 
       {/* Mobile / tablet: desktop-only gate */}
@@ -672,6 +790,9 @@ export function FicheEditor({
             theme={payload.theme}
             dateLabel={dateLabel}
             editedFields={editedFields}
+            illustrationSrc={
+              illustrations.find((img) => img.retenue)?.url ?? null
+            }
             onOverflowChange={handleOverflowChange}
           />
         </div>
