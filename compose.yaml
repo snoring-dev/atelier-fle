@@ -24,7 +24,10 @@ services:
     image: gotenberg/gotenberg:8
     command:
       - gotenberg
-      - --chromium-allow-list=^http://web:3000/.*
+      # Compose `web` + host Next (`pnpm dev`) via Docker Desktop.
+      - --chromium-allow-list=^http://(web|host\.docker\.internal):3000/.*
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "3001:3000"
 
