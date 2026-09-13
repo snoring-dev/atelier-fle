@@ -60,10 +60,13 @@ export async function POST(req: Request, context: RouteContext) {
     return new Response("Fiche déjà validée", { status: 409 });
   }
 
+  // Reuse the draw stored on the fiche (do not redraw on section regen).
+  const reviewWords = fiche.reviewWords ?? [];
+
   const result = streamFicheSection({
     section,
     payload,
-    reviewWords: [],
+    reviewWords,
   });
 
   // Keep the model stream draining if the client aborts (tab close / Stop).

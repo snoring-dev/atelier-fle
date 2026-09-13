@@ -1,4 +1,5 @@
-import type { Fiche, ImageRow, LexiqueEntry } from "./types";
+import type { FichePayload } from "@/lib/schemas";
+import type { Fiche, ImageRow } from "./types";
 
 export type CreateFicheInput = {
   theme: string;
@@ -19,11 +20,23 @@ export type FichesRepository = {
   saveDraft(input: SaveDraftInput): Promise<Fiche>;
   /** Mark brouillon as validee; no-op if already validated. */
   validate(numero: number): Promise<Fiche>;
+  /** Persist lexicon draw for this fiche (set once; leave untouched by saveDraft). */
+  setReviewWords(numero: number, words: readonly string[]): Promise<Fiche>;
 };
 
 export type LexiqueRepository = {
-  // US-7.x+: list, upsert, exclude, draw, …
-  readonly _entity: LexiqueEntry;
+  /**
+   * Draw up to `limit` words for reinjection.
+   * P1: en cours last seen > 7 days (oldest first).
+   * P2: nouveau with occurrences === 1 (oldest first).
+   * Never exclu / acquis.
+   */
+  draw(limit?: number): Promise<string[]>;
+  /**
+   * On validation: upsert vocabulary terms that appear in the text,
+   * and bump any existing non-exclu/non-acquis lexicon mots found in the text.
+   */
+  recordFromPayload(payload: FichePayload): Promise<void>;
 };
 
 export type ImagesRepository = {

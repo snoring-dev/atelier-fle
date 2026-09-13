@@ -9,6 +9,8 @@ export type Fiche = {
   theme: string | null;
   category: string | null;
   promptVersion: string | null;
+  /** Lexicon words drawn for reinjection (US-7.1). Null until first draw. */
+  reviewWords: string[] | null;
   validatedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;

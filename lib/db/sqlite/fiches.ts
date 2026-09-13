@@ -6,6 +6,22 @@ import * as schema from "./schema";
 
 type Db = BetterSQLite3Database<typeof schema>;
 
+function parseReviewWords(raw: string | null): string[] | null {
+  if (raw == null) return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (
+      !Array.isArray(parsed) ||
+      !parsed.every((w): w is string => typeof w === "string")
+    ) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 function mapRow(row: typeof schema.fiches.$inferSelect): Fiche {
   return {
     numero: row.numero,
@@ -14,6 +30,7 @@ function mapRow(row: typeof schema.fiches.$inferSelect): Fiche {
     theme: row.theme,
     category: row.category,
     promptVersion: row.promptVersion,
+    reviewWords: parseReviewWords(row.reviewWords),
     validatedAt: row.validatedAt,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -32,6 +49,7 @@ export function createFichesRepository(db: Db): FichesRepository {
           theme,
           category,
           promptVersion: null,
+          reviewWords: null,
           validatedAt: null,
           createdAt: now,
           updatedAt: now,
@@ -101,6 +119,23 @@ export function createFichesRepository(db: Db): FichesRepository {
           status: "validee",
           validatedAt: now,
           updatedAt: now,
+        })
+        .where(eq(schema.fiches.numero, numero))
+        .returning()
+        .get();
+
+      if (!updated) {
+        throw new Error(`Fiche ${numero} introuvable`);
+      }
+      return mapRow(updated);
+    },
+
+    async setReviewWords(numero, words) {
+      const updated = db
+        .update(schema.fiches)
+        .set({
+          reviewWords: JSON.stringify([...words]),
+          updatedAt: new Date(),
         })
         .where(eq(schema.fiches.numero, numero))
         .returning()

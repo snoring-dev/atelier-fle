@@ -1,0 +1,1 @@
+ALTER TABLE `fiches` ADD `review_words` text;

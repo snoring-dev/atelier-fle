@@ -9,7 +9,9 @@ function isGotenbergUnreachable(err: unknown): boolean {
   const cause = err.cause;
   if (typeof cause !== "object" || cause === null) return false;
   const code = "code" in cause ? String(cause.code) : "";
-  return code === "ECONNREFUSED" || code === "ENOTFOUND" || code === "ECONNRESET";
+  return (
+    code === "ECONNREFUSED" || code === "ENOTFOUND" || code === "ECONNRESET"
+  );
 }
 
 export const dynamic = "force-dynamic";
@@ -56,7 +58,16 @@ export async function GET(_req: Request, context: RouteContext) {
     return new Response("Échec de la génération PDF", { status: 502 });
   }
 
+  // Only first validation feeds the lexicon (drafts / re-exports do not).
+  const wasDraft = fiche.status === "brouillon";
   await db.fiches.validate(numero);
+
+  if (wasDraft) {
+    const payload = parsePayload(fiche.payload);
+    if (payload) {
+      await db.lexique.recordFromPayload(payload);
+    }
+  }
 
   return new Response(pdf, {
     status: 200,

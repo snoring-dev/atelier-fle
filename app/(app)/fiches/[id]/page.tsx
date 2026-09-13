@@ -1,7 +1,7 @@
 import { Inter } from "next/font/google";
 import { notFound } from "next/navigation";
 import { FicheStream } from "@/components/fiche-stream";
-import { getDatabase } from "@/lib/db";
+import { ensureReviewWords, getDatabase } from "@/lib/db";
 import { parsePayload } from "@/lib/schemas";
 
 const inter = Inter({
@@ -28,12 +28,16 @@ export default async function FichePage({ params }: FichePageProps) {
     notFound();
   }
 
-  const fiche = await getDatabase().fiches.getByNumero(numero);
+  const db = getDatabase();
+  const fiche = await db.fiches.getByNumero(numero);
   if (!fiche) {
     notFound();
   }
 
   const initialPayload = parsePayload(fiche.payload);
+  // Draw (or reuse) review words once the page loads so the Révision pill
+  // matches what generate / text regen inject into the prompt.
+  const reviewWords = await ensureReviewWords(db, fiche);
 
   return (
     <div className={`${inter.className} px-4 py-6 text-[14px]`}>
@@ -45,6 +49,7 @@ export default async function FichePage({ params }: FichePageProps) {
         dateLabel={formatDateLabel(fiche.createdAt)}
         promptVersion={fiche.promptVersion}
         initialPayload={initialPayload}
+        reviewWords={reviewWords}
       />
     </div>
   );

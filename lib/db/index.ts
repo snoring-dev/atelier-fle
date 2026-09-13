@@ -2,6 +2,7 @@ import type { Database, DatabaseProvider } from "./ports";
 import { createSqliteStrategy } from "./sqlite/strategy";
 
 export type { Database, DatabaseProvider } from "./ports";
+export { ensureReviewWords } from "./review-words";
 export type * from "./types";
 
 function resolveProvider(): DatabaseProvider {

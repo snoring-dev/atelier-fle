@@ -20,6 +20,8 @@ type FicheStreamProps = {
   promptVersion: string | null;
   /** Parsed payload if already generated; null triggers auto-start. */
   initialPayload: FichePayload | null;
+  /** Lexicon draw for reinjection / Révision check (US-7.1). */
+  reviewWords?: readonly string[];
 };
 
 type SectionJob = {
@@ -42,6 +44,7 @@ export function FicheStream({
   dateLabel,
   promptVersion,
   initialPayload,
+  reviewWords = [],
 }: FicheStreamProps) {
   const started = useRef(false);
   const hasInitial = initialPayload !== null;
@@ -153,6 +156,7 @@ export function FicheStream({
           initialPayload={displayPayload}
           isGenerating={generating}
           streamError={activeError}
+          reviewWords={reviewWords}
           onStop={
             generating
               ? () => {

@@ -9,6 +9,8 @@ export const fiches = sqliteTable("fiches", {
   theme: text("theme"),
   category: text("category"),
   promptVersion: text("prompt_version"),
+  /** JSON string array of lexicon words drawn for reinjection (US-7.1). */
+  reviewWords: text("review_words"),
   validatedAt: integer("validated_at", { mode: "timestamp" }),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()

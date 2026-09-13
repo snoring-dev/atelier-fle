@@ -1,7 +1,7 @@
 import { after } from "next/server";
 import { ficheStreamResponse, streamFiche } from "@/lib/ai";
 import { requireSession } from "@/lib/auth/require-session";
-import { getDatabase } from "@/lib/db";
+import { ensureReviewWords, getDatabase } from "@/lib/db";
 import { PROMPT_VERSION } from "@/lib/prompts";
 
 export const maxDuration = 30;
@@ -44,10 +44,12 @@ export async function POST(req: Request) {
     return new Response("Thème manquant sur la fiche", { status: 400 });
   }
 
+  const reviewWords = await ensureReviewWords(db, fiche);
+
   const result = streamFiche({
     theme: fiche.theme,
     category: fiche.category,
-    reviewWords: [],
+    reviewWords,
   });
 
   // Keep the model stream draining if the client aborts (tab close / Stop).
