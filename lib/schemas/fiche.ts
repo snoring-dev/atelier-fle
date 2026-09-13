@@ -72,7 +72,7 @@ export const ficheSchema = z.object({
   text: z
     .string()
     .describe(
-      "Texte de 150 à 200 mots : situation concrète (début, tension, résolution). Vocabulaire courant, registre adulte. Temps : présent, passé composé, imparfait. Pas de subjonctif complexe ni de passé simple.",
+      "Texte de 150 à 200 mots en exactement 3 paragraphes (début, tension, résolution) séparés par une ligne vide. Vocabulaire courant, registre adulte. Temps : présent, passé composé, imparfait. Pas de subjonctif complexe ni de passé simple.",
     ),
   illustration: z.object({
     description: z

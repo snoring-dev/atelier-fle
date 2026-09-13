@@ -56,6 +56,7 @@ export function buildFicheSectionUserPrompt(
       ...formatReviewWords(reviewWords),
       "",
       "Produis uniquement un nouveau champ `text` (150 à 200 mots) pour ce thème.",
+      "Exactement 3 paragraphes (début, tension, résolution) séparés par une ligne vide.",
       "Ne change pas le thème. Ne produis pas les questions, le vocabulaire ni la remise en ordre.",
     ];
     return lines.join("\n");

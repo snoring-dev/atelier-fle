@@ -1,3 +1,4 @@
+import { splitReadingParagraphs } from "@/lib/print/reading-paragraphs";
 import type { FichePayload, QuestionType } from "@/lib/schemas";
 import { cn } from "@/lib/utils";
 import styles from "./worksheet.module.css";
@@ -72,9 +73,11 @@ export function WorksheetDocument({
     (a, b) => a.position - b.position,
   );
   const isEdited = (path: string) => Boolean(editedFields?.has(path));
+  const paragraphs = splitReadingParagraphs(payload.text);
+  const textEdited = isEdited("text");
 
   return (
-    <div className={styles.document}>
+    <div className={styles.document} lang="fr">
       {/* Page 1 — reading */}
       <article className={styles.page} data-page="1">
         <div className={styles.pageBody}>
@@ -85,18 +88,30 @@ export function WorksheetDocument({
               {payload.title}
             </h1>
 
-            {illustrationSrc ? (
-              // biome-ignore lint/performance/noImgElement: print asset URL; next/image not needed for Gotenberg
-              <img
-                className={styles.illustration}
-                src={illustrationSrc}
-                alt=""
-              />
-            ) : null}
+            <div className={styles.article}>
+              {illustrationSrc ? (
+                // biome-ignore lint/performance/noImgElement: print asset URL; next/image not needed for Gotenberg
+                <img
+                  className={styles.illustration}
+                  src={illustrationSrc}
+                  alt=""
+                />
+              ) : null}
 
-            <p className={cn(styles.text, isEdited("text") && styles.edited)}>
-              {payload.text}
-            </p>
+              {paragraphs.map((paragraph, index) => (
+                <p
+                  // biome-ignore lint/suspicious/noArrayIndexKey: stable paragraph order from splitter
+                  key={index}
+                  className={cn(
+                    styles.text,
+                    index === 0 && styles.textLead,
+                    textEdited && styles.edited,
+                  )}
+                >
+                  {paragraph}
+                </p>
+              ))}
+            </div>
 
             <section className={styles.section}>
               <h2 className={styles.sectionTitle}>Vocabulaire</h2>

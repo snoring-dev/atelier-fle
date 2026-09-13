@@ -1,5 +1,5 @@
 /** Bump when the pedagogical prompt changes in a meaningful way. */
-export const PROMPT_VERSION = "fle-1";
+export const PROMPT_VERSION = "fle-2";
 
 /**
  * Pedagogical system prompt for worksheet generation.
@@ -37,6 +37,8 @@ une si le thème est libre.
 
 ## text
 - 150 à 200 mots.
+- Exactement **3 paragraphes** (début, tension, résolution), séparés par une
+  ligne vide (\`\\n\\n\`) dans la chaîne JSON.
 - Vocabulaire courant, phrases de longueur variée (alterne courtes et longues).
 - Temps dominants : présent, passé composé, imparfait. Évite le subjonctif
   complexe et le passé simple.
