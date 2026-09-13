@@ -69,6 +69,15 @@ export function createFichesRepository(db: Db): FichesRepository {
       return row ? mapRow(row) : null;
     },
 
+    async list() {
+      const rows = db
+        .select()
+        .from(schema.fiches)
+        .orderBy(desc(schema.fiches.createdAt), desc(schema.fiches.numero))
+        .all();
+      return rows.map(mapRow);
+    },
+
     async listRecent(limit) {
       const rows = db
         .select()
@@ -145,6 +154,37 @@ export function createFichesRepository(db: Db): FichesRepository {
         throw new Error(`Fiche ${numero} introuvable`);
       }
       return mapRow(updated);
+    },
+
+    async duplicate(numero) {
+      const source = db
+        .select()
+        .from(schema.fiches)
+        .where(eq(schema.fiches.numero, numero))
+        .get();
+
+      if (!source) {
+        throw new Error(`Fiche ${numero} introuvable`);
+      }
+
+      const now = new Date();
+      const inserted = db
+        .insert(schema.fiches)
+        .values({
+          status: "brouillon",
+          payload: source.payload,
+          theme: source.theme,
+          category: source.category,
+          promptVersion: source.promptVersion,
+          reviewWords: null,
+          validatedAt: null,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning()
+        .get();
+
+      return mapRow(inserted);
     },
   };
 }

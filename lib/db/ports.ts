@@ -16,12 +16,19 @@ export type SaveDraftInput = {
 export type FichesRepository = {
   create(input: CreateFicheInput): Promise<Fiche>;
   getByNumero(numero: number): Promise<Fiche | null>;
+  /** All fiches, newest first (archive). */
+  list(): Promise<Fiche[]>;
   listRecent(limit: number): Promise<Fiche[]>;
   saveDraft(input: SaveDraftInput): Promise<Fiche>;
   /** Mark brouillon as validee; no-op if already validated. */
   validate(numero: number): Promise<Fiche>;
   /** Persist lexicon draw for this fiche (set once; leave untouched by saveDraft). */
   setReviewWords(numero: number, words: readonly string[]): Promise<Fiche>;
+  /**
+   * Clone a fiche as a new brouillon with a new numero.
+   * Copies theme/category/payload/promptVersion; clears reviewWords and validation.
+   */
+  duplicate(numero: number): Promise<Fiche>;
 };
 
 export type LexiqueRepository = {
