@@ -9,6 +9,7 @@
     "lint": "biome check .",
     "format": "biome check --write .",
     "test": "tsx --test 'lib/**/*.test.ts'",
+    "pdf": "docker compose -f compose.yaml -f compose.dev.yaml up pdf -d",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
     "auth:hash": "tsx scripts/hash-password.ts"

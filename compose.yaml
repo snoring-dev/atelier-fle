@@ -1,8 +1,6 @@
 services:
   web:
     build: .
-    ports:
-      - "3000:3000"
     env_file:
       - path: .env
         required: false
@@ -28,8 +26,6 @@ services:
       - --chromium-allow-list=^http://(web|host\.docker\.internal):3000/.*
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    ports:
-      - "3001:3000"
 
 volumes:
   fle-data:

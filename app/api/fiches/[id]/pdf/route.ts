@@ -51,7 +51,7 @@ export async function GET(_req: Request, context: RouteContext) {
     console.error("PDF export failed:", err);
     if (isGotenbergUnreachable(err)) {
       return new Response(
-        "Service PDF injoignable. Démarrez Gotenberg : docker compose up pdf -d",
+        "Service PDF injoignable. Démarrez Gotenberg : pnpm pdf",
         { status: 503 },
       );
     }

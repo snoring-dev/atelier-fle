@@ -1,0 +1,10 @@
+# Local host port mappings. Coolify uses compose.yaml only.
+# Usage: docker compose -f compose.yaml -f compose.dev.yaml up
+# Or:    pnpm pdf  (Gotenberg only)
+services:
+  web:
+    ports:
+      - "3000:3000"
+  pdf:
+    ports:
+      - "3001:3000"
