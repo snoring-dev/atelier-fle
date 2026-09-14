@@ -165,7 +165,7 @@ export function LexiqueScreen({ entries }: LexiqueScreenProps) {
 
       {!isEmptyTable && filtered.length > 0 ? (
         <div className="overflow-x-auto rounded-xl ring-1 ring-foreground/10">
-          <table className="w-full min-w-[40rem] border-collapse text-sm">
+          <table className="w-full min-w-160 border-collapse text-sm">
             <thead>
               <tr className="border-b bg-muted/50 text-left">
                 <th className="px-3 py-2 font-medium">Mot</th>
@@ -189,10 +189,10 @@ export function LexiqueScreen({ entries }: LexiqueScreenProps) {
                   <td className="px-3 py-2 font-medium text-foreground">
                     {entry.mot}
                   </td>
-                  <td className="max-w-[14rem] px-3 py-2">
+                  <td className="max-w-56 px-3 py-2">
                     {truncate(entry.definition)}
                   </td>
-                  <td className="max-w-[14rem] px-3 py-2">
+                  <td className="max-w-56 px-3 py-2">
                     {truncate(entry.exemple)}
                   </td>
                   <td className="px-3 py-2">

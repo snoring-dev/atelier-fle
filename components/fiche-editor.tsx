@@ -451,7 +451,7 @@ export function FicheEditor({
                 <img
                   src={img.url}
                   alt=""
-                  className="block aspect-[3/2] w-full object-cover grayscale"
+                  className="block aspect-3/2 w-full object-cover grayscale"
                 />
               </button>
             </li>

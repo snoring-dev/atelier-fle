@@ -177,7 +177,7 @@ export function ArchiveScreen({ fiches }: ArchiveScreenProps) {
             </label>
             <select
               id="archive-theme"
-              className="h-8 min-w-[12rem] rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              className="h-8 min-w-48 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
               value={themeFilter}
               onChange={(e) => setThemeFilter(e.target.value)}
               aria-label="Filtrer par thème"
@@ -208,7 +208,7 @@ export function ArchiveScreen({ fiches }: ArchiveScreenProps) {
 
       {!isEmptyTable && filtered.length > 0 ? (
         <div className="overflow-x-auto rounded-xl ring-1 ring-foreground/10">
-          <table className="w-full min-w-[40rem] border-collapse text-sm">
+          <table className="w-full min-w-160 border-collapse text-sm">
             <thead>
               <tr className="border-b bg-muted/50 text-left">
                 <th className="px-3 py-2 font-medium">N°</th>
